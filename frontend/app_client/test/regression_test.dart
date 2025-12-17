@@ -1,7 +1,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/models.dart';
-import '../lib/session_service.dart';
+import 'package:app_client/models.dart';
+import 'package:app_client/session_service.dart';
 
 void main() {
   group('Regression Test - Session Data Serialization', () {

@@ -230,3 +230,110 @@ class SessionData {
     };
   }
 }
+// Unified event class for calendar display
+class CalendarEvent {
+  final String id;
+  final String title;
+  final String description;
+  final DateTime date;
+  final String? course;
+  final String? link;
+  final bool isCustom;
+  final String color;
+  final String platform; // 'Moodle' or 'Ayla'
+
+  CalendarEvent({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.date,
+    this.course,
+    this.link,
+    required this.isCustom,
+    this.color = '#4a5568',
+    this.platform = 'Moodle',
+  });
+
+  factory CalendarEvent.fromDeadline(Deadline deadline) {
+    final isAyla = deadline.platform == 'Ayla';
+    return CalendarEvent(
+      id: deadline.link.isNotEmpty ? deadline.link : DateTime.now().millisecondsSinceEpoch.toString(),
+      title: deadline.title,
+      description: deadline.course,
+      date: DateTime.parse(deadline.date),
+      course: deadline.course,
+      link: deadline.link,
+      isCustom: isAyla,
+      color: isAyla ? '#E74C3C' : '#4a5568', // Red for exams, gray for Moodle
+      platform: deadline.platform,
+    );
+  }
+
+  factory CalendarEvent.fromCustomEvent(CustomEvent customEvent) {
+    return CalendarEvent(
+      id: customEvent.id,
+      title: customEvent.title,
+      description: customEvent.description,
+      date: customEvent.date,
+      course: customEvent.location,
+      isCustom: true,
+      color: customEvent.color,
+    );
+  }
+}
+
+// Helper function to filter out submission actions (not actual deadlines)
+List<Deadline> filterRealDeadlines(List<Deadline> deadlines) {
+  final filterOutTitles = [
+    'aufgabenlösung hinzufügen',
+    'lösung hinzufügen',
+    'abgabe hinzufügen',
+    'add submission',
+    'edit submission',
+    'einreichung',
+    'aufgabe lösen',
+    'lösung',
+    'hinzufügen',
+    'endet',      
+    'beginnt',    
+  ];
+  
+  final filterOutUrls = [
+    'action=editsubmission',
+    'action=submit',
+    'action=add',
+  ];
+  
+  return deadlines.where((deadline) {
+    final titleLower = deadline.title.toLowerCase();
+    final linkLower = deadline.link.toLowerCase();
+    
+    if (filterOutTitles.any((filter) => titleLower.contains(filter))) {
+      return false;
+    }
+    
+    if (filterOutUrls.any((filter) => linkLower.contains(filter))) {
+      return false;
+    }
+    
+    return true;
+  }).toList();
+}
+
+class CustomEvent {
+  final String id;
+  final String title;
+  final String description;
+  final DateTime date;
+  final String location;
+  final String color;
+
+  CustomEvent({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.date,
+    required this.location,
+    required this.color,
+  });
+}
