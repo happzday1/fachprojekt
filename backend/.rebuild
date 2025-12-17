@@ -1,0 +1,5 @@
+force_rebuild=1
+force_rebuild_2=1
+boss_rebuild=1
+boss_mapping_v1=1
+fix_bs4_version=1
