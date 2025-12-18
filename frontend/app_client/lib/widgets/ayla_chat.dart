@@ -19,9 +19,8 @@ class ChatMessage {
 
 class AylaChatButton extends StatefulWidget {
   final VoidCallback onPressed;
-  final String? initials;
 
-  const AylaChatButton({super.key, required this.onPressed, this.initials});
+  const AylaChatButton({super.key, required this.onPressed});
 
   @override
   State<AylaChatButton> createState() => _AylaChatButtonState();
@@ -46,30 +45,62 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return ScaleTransition(
       scale: _pulseAnimation,
       child: GestureDetector(
         onTap: widget.onPressed,
         child: Container(
-          width: 60, height: 60,
+          width: 56, height: 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF00D2FF), Color(0xFF3A7BD5)]),
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+            border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1), width: 1.5),
             boxShadow: [
-              BoxShadow(color: const Color(0xFF3A7BD5).withOpacity(0.4), blurRadius: 15, spreadRadius: 2, offset: const Offset(0, 4)),
-              BoxShadow(color: const Color(0xFF00D2FF).withOpacity(0.2), blurRadius: 20, spreadRadius: 5),
+              BoxShadow(
+                color: const Color(0xFF38B6FF).withOpacity(isDark ? 0.2 : 0.1),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
             ],
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (widget.initials != null)
-                Text(widget.initials!, style: GoogleFonts.inter(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))
-              else
-                const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 30),
-              Positioned(right: 12, top: 12, child: Container(width: 10, height: 10, decoration: BoxDecoration(color: const Color(0xFF00D2FF), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)))),
-            ],
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ColorFilter.mode(
+                const Color(0xFF38B6FF).withOpacity(0.05),
+                BlendMode.srcOver,
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                   Icon(
+                    Icons.auto_awesome_rounded, 
+                    color: isDark ? Colors.white.withOpacity(0.9) : const Color(0xFF1E293B),
+                    size: 24,
+                  ),
+                  Positioned(
+                    right: 14, 
+                    top: 14, 
+                    child: Container(
+                      width: 8, height: 8, 
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF38B6FF), 
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF38B6FF).withOpacity(0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          )
+                        ]
+                      )
+                    )
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -185,10 +216,23 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
   }
 
   Widget _buildMinimizedView() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => setState(() => _isMinimized = false),
       borderRadius: BorderRadius.circular(24),
-      child: Container(decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00D2FF), Color(0xFF3A7BD5)]), borderRadius: BorderRadius.circular(24)), child: const Center(child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26))),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(24),
+        ), 
+        child: Center(
+          child: Icon(
+            Icons.auto_awesome_rounded, 
+            color: isDark ? Colors.white.withOpacity(0.8) : const Color(0xFF1E293B), 
+            size: 24
+          )
+        )
+      ),
     );
   }
 
@@ -199,13 +243,23 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF00D2FF), Color(0xFF3A7BD5)])),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.03) : const Color(0xFF1E293B).withOpacity(0.03),
+              border: Border(bottom: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))),
+            ),
             child: Row(children: [
-              Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22)),
-              const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Ayla", style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)), Text("AI Study Companion", style: GoogleFonts.inter(fontSize: 11, color: Colors.white70))])),
-              IconButton(icon: const Icon(Icons.remove_rounded, color: Colors.white70, size: 20), onPressed: () => setState(() => _isMinimized = true)),
-              IconButton(icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20), onPressed: widget.onClose),
+              Container(
+                padding: const EdgeInsets.all(8), 
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38B6FF).withOpacity(0.1), 
+                  borderRadius: BorderRadius.circular(12)
+                ), 
+                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 18)
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Ayla", style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1E293B))), Text("AI Study Companion", style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38))])),
+              IconButton(icon: Icon(Icons.remove_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20), onPressed: () => setState(() => _isMinimized = true)),
+              IconButton(icon: Icon(Icons.close_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20), onPressed: widget.onClose),
             ]),
           ),
           Expanded(child: ListView.builder(controller: _scrollController, padding: const EdgeInsets.all(12), itemCount: _messages.length + (_isLoading ? 1 : 0), itemBuilder: (context, index) { if (index == _messages.length && _isLoading) return _buildTypingIndicator(isDark); return _buildMessage(_messages[index], isDark); })),
@@ -215,7 +269,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
             child: Row(children: [
               Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : Colors.black87), decoration: InputDecoration(hintText: "Ask anything...", hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 14), filled: true, fillColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true), onSubmitted: (_) => _sendMessage())),
               const SizedBox(width: 8),
-              IconButton(icon: const Icon(Icons.send_rounded, color: Color(0xFF3A7BD5)), onPressed: _sendMessage),
+              IconButton(icon: const Icon(Icons.send_rounded, color: Color(0xFF38B6FF)), onPressed: _sendMessage),
             ]),
           ),
         ],
@@ -227,22 +281,97 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
-        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!message.isUser) ...[Container(width: 26, height: 26, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00D2FF), Color(0xFF3A7BD5)]), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14)), const SizedBox(width: 6)],
-          Flexible(child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: message.isUser ? const Color(0xFF3A7BD5).withOpacity(0.9) : (isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade100), borderRadius: BorderRadius.circular(16).copyWith(bottomRight: message.isUser ? const Radius.circular(4) : null, bottomLeft: !message.isUser ? const Radius.circular(4) : null), border: Border.all(color: message.isUser ? Colors.transparent : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)))), child: message.isUser ? Text(message.text, style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: Colors.white)) : MarkdownBody(data: message.text, styleSheet: MarkdownStyleSheet(p: GoogleFonts.inter(fontSize: 13, height: 1.4, color: isDark ? Colors.white : Colors.black87), a: GoogleFonts.inter(color: const Color(0xFF00D2FF), decoration: TextDecoration.underline), code: GoogleFonts.robotoMono(backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200, fontSize: 12), codeblockDecoration: BoxDecoration(color: isDark ? Colors.black26 : Colors.grey.shade100, borderRadius: BorderRadius.circular(8))), onTapLink: (text, href, title) { if (href != null) launchUrl(Uri.parse(href)); }))),
+          if (!message.isUser) ...[
+            Container(
+              width: 26, height: 26, 
+              decoration: BoxDecoration(
+                color: const Color(0xFF38B6FF).withOpacity(0.1), 
+                borderRadius: BorderRadius.circular(8)
+              ), 
+              child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 14)
+            ), 
+            const SizedBox(width: 8)
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
+              decoration: BoxDecoration(
+                color: message.isUser 
+                  ? (isDark ? const Color(0xFF38B6FF).withOpacity(0.8) : const Color(0xFF38B6FF)) 
+                  : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04)), 
+                borderRadius: BorderRadius.circular(16).copyWith(
+                  bottomRight: message.isUser ? const Radius.circular(4) : null, 
+                  bottomLeft: !message.isUser ? const Radius.circular(4) : null
+                ), 
+                border: Border.all(color: message.isUser ? Colors.transparent : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)))
+              ), 
+              child: message.isUser 
+                ? Text(message.text, style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: Colors.white)) 
+                : MarkdownBody(
+                    data: message.text, 
+                    styleSheet: MarkdownStyleSheet(
+                      p: GoogleFonts.inter(fontSize: 13, height: 1.4, color: isDark ? Colors.white : Colors.black87), 
+                      a: GoogleFonts.inter(color: const Color(0xFF38B6FF), decoration: TextDecoration.underline), 
+                      code: GoogleFonts.robotoMono(backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200, fontSize: 12), 
+                      codeblockDecoration: BoxDecoration(color: isDark ? Colors.black26 : Colors.grey.shade100, borderRadius: BorderRadius.circular(8))
+                    ), 
+                    onTapLink: (text, href, title) { if (href != null) launchUrl(Uri.parse(href)); }
+                  )
+            )
+          ),
         ],
       ),
     );
   }
 
   Widget _buildTypingIndicator(bool isDark) {
-    return Padding(padding: const EdgeInsets.only(bottom: 10), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 26, height: 26, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00D2FF), Color(0xFF3A7BD5)]), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 14)), const SizedBox(width: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), decoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade100, borderRadius: BorderRadius.circular(14).copyWith(bottomLeft: const Radius.circular(4))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _buildDot(i))), const SizedBox(height: 6), _AnimatedStatusText(isDark: isDark)]))]));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10), 
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start, 
+        children: [
+          Container(
+            width: 26, height: 26, 
+            decoration: BoxDecoration(
+              color: const Color(0xFF38B6FF).withOpacity(0.1), 
+              borderRadius: BorderRadius.circular(8)
+            ), 
+            child: const Icon(Icons.psychology_rounded, color: Color(0xFF38B6FF), size: 14)
+          ), 
+          const SizedBox(width: 8), 
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), 
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04), 
+              borderRadius: BorderRadius.circular(14).copyWith(bottomLeft: const Radius.circular(4))
+            ), 
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, 
+              mainAxisSize: MainAxisSize.min, 
+              children: [
+                Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _buildDot(i))), 
+                const SizedBox(height: 6), 
+                _AnimatedStatusText(isDark: isDark)
+              ]
+            )
+          )
+        ]
+      )
+    );
   }
 
   Widget _buildDot(int index) {
-    return TweenAnimationBuilder<double>(tween: Tween(begin: 0.4, end: 1.0), duration: Duration(milliseconds: 400 + (index * 150)), curve: Curves.easeInOut, builder: (context, value, _) => Container(margin: EdgeInsets.only(right: index < 2 ? 4 : 0), width: 6, height: 6, decoration: BoxDecoration(color: const Color(0xFF3A7BD5).withOpacity(value), shape: BoxShape.circle)));
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.4, end: 1.0), 
+      duration: Duration(milliseconds: 400 + (index * 150)), 
+      curve: Curves.easeInOut, 
+      builder: (context, value, _) => Container(
+        margin: EdgeInsets.only(right: index < 2 ? 4 : 0), 
+        width: 6, height: 6, 
+        decoration: BoxDecoration(color: const Color(0xFF38B6FF).withOpacity(value), shape: BoxShape.circle)
+      )
+    );
   }
 }
 

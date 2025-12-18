@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
+import httpx
 
 
 import os
@@ -69,6 +70,13 @@ class BossScraper:
         # Performance Flag: Disable images
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         
+        # Performance Flag: Reuse user data dir for session caching
+        # We use a subfolder in DEBUG_DIR for BOSS specifically
+        boss_session_dir = os.path.join(DEBUG_DIR, "boss_session")
+        if not os.path.exists(boss_session_dir):
+            os.makedirs(boss_session_dir, exist_ok=True)
+        chrome_options.add_argument(f"--user-data-dir={boss_session_dir}")
+        
         # User Agent for consistency
         chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
@@ -88,30 +96,49 @@ class BossScraper:
         logger.info("Navigating to BOSS...")
         self.driver.get("https://www.boss.tu-dortmund.de/")
         
-        # Step 1: Wait for SSO redirect or find login button
+        # 1. Faster Check: Am I already logged in or on SSO?
+        # Use a short wait for the URL/Page to stabilize
         try:
-            self.wait.until(EC.url_contains("sso.itmc"))
-            logger.info("Redirected to SSO automatically.")
-        except TimeoutException:
-            logger.info("Not redirected to SSO. Checking for Login button on BOSS...")
+            self.wait.until(lambda d: "sso.itmc" in d.current_url or "menue=n" in d.page_source or "Anmelden" in d.page_source)
+        except:
+            pass
+
+        current_url = self.driver.current_url
+        page_source = self.driver.page_source
+
+        if "boss.tu-dortmund.de" in current_url and "menue=n" in page_source:
+            logger.info("Session resumed (already logged in to BOSS)")
+            return True
+            
+        if "sso.itmc" in current_url:
+            logger.info("Already on SSO page.")
+        else:
+            logger.info("On BOSS landing page. Looking for Login button...")
+            # Try to find a Login link/button with a VERY short timeout
             try:
-                # Try to find a Login link/button. 
-                # Common candidates on BOSS: "Anmelden", "Login", or specific links.
-                login_btn = self.driver.find_element(By.PARTIAL_LINK_TEXT, "Anmelden")
+                # Use find_elements to check existence without waiting if possible, 
+                # or a very short explicit wait.
+                short_wait = WebDriverWait(self.driver, 2)
+                login_btn = short_wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Anmelden")))
                 login_btn.click()
-                self.wait.until(EC.url_contains("sso.itmc"))
-                logger.info("Redirected to SSO after clicking 'Anmelden'.")
+                logger.info("Clicked 'Anmelden'")
             except:
-                 logger.warning("Could not find/click 'Anmelden'. attempting generic Login link or proceeding if already there.")
-                 try:
-                     login_btn = self.driver.find_element(By.PARTIAL_LINK_TEXT, "Login")
-                     login_btn.click()
-                     self.wait.until(EC.url_contains("sso.itmc"))
-                 except:
-                     pass
+                try:
+                    short_wait = WebDriverWait(self.driver, 1)
+                    login_btn = short_wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Login")))
+                    login_btn.click()
+                    logger.info("Clicked 'Login'")
+                except:
+                    logger.warning("Could not find 'Anmelden' or 'Login' buttons within short timeout. Final SSO check...")
+            
+            # Final check if we reached SSO
+            try:
+                self.wait.until(EC.url_contains("sso.itmc"))
+            except TimeoutException:
+                 if "sso.itmc" not in self.driver.current_url:
+                     logger.warning("Still not on SSO. Proceeding to check for credential fields anyway...")
 
         logger.info(f"Current URL: {self.driver.current_url}")
-        logger.info(f"Page Title: {self.driver.title}")
 
         # Step 2: Credential Injection (Robust)
         logger.info("Injecting credentials...")
@@ -186,7 +213,13 @@ class BossScraper:
              password_field.submit()
         
         # Step 3: Handle 2FA
-        time.sleep(3) # Wait for page transition
+        # Wait for either error, 2FA, or redirect back to BOSS
+        try:
+            self.wait.until(lambda d: "error" in d.page_source.lower() or "fehlgeschlagen" in d.page_source.lower() or 
+                           "sso.itmc" in d.current_url or "boss.tu-dortmund.de" in d.current_url)
+        except:
+            pass
+
         page_source = self.driver.page_source.lower()
         
         # Check for error
@@ -232,7 +265,11 @@ class BossScraper:
                 verify_btn = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
                 
             verify_btn.click()
-            time.sleep(3)
+            # Wait for redirect after 2FA
+            try:
+                self.wait.until(EC.url_contains("boss.tu-dortmund.de"))
+            except:
+                pass
             
         # Step 4: Verification
         try:
@@ -278,7 +315,13 @@ class BossScraper:
                  link2 = self.wait.until(EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Grades")))
         
         link2.click()
-        time.sleep(3) # Wait for tree view to load
+        
+        # Wait for tree view to load (usually an info icon or specific text)
+        try:
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a[title='Leistungen anzeigen'], a[title='Show achievements']")))
+            logger.info("Tree view loaded.")
+        except:
+            logger.warning("Timeout waiting for tree view icons, proceeding anyway.")
         
         # Target 3: Select degree program (if multiple)
         # Look for the info icon or the first valid link in the list of programs
@@ -332,12 +375,13 @@ class BossScraper:
                  # Fallback to previous heuristic if no icon found
                  logger.warning("Specific grade link not found, trying generic asi link...")
                  try:
-                     program_link = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href*='asi']")))
-                     program_link.click()
-                     logger.info("Clicked generic degree program link.")
-                     time.sleep(3)
+                      program_link = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[href*='asi']")))
+                      program_link.click()
+                      logger.info("Clicked generic degree program link.")
+                      # Try to wait for table
+                      self.wait.until(lambda d: "Prüfung" in d.page_source or "Exam" in d.page_source)
                  except:
-                     logger.warning("Generic asi link also not found.")
+                      logger.warning("Generic asi link also not found.")
         
         except Exception as e:
             logger.error(f"Navigation failed: {e}")
@@ -351,252 +395,33 @@ class BossScraper:
              logger.warning("Grade table not immediately visible, checking for further links.")
         
 
-    def extract_degree_identity(self):
-        """
-        Extract degree metadata from BOSS transcript page.
+    def _fetch_page_via_requests(self, url):
+        """Fetch a page using httpx by reusing Selenium cookies."""
+        logger.info(f"Fetching {url} via httpx...")
         
-        Returns:
-            dict: {
-                'degree_type': str,      # e.g., "Bachelor"
-                'degree_subject': str,   # e.g., "Angewandte Informatik"
-                'po_version': str,       # e.g., "2023"
-                'degree_code': str,      # e.g., "B62"
-                'abschluss_code': str    # e.g., "82"
-            }
-        """
-        import re
-        
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        page_source = self.driver.page_source
-        
-        degree_info = {
-            'degree_type': None,
-            'degree_subject': None,
-            'po_version': None,
-            'degree_code': None,
-            'abschluss_code': None
+        # Extract cookies from Selenium
+        selenium_cookies = self.driver.get_cookies()
+        jar = httpx.Cookies()
+        for cookie in selenium_cookies:
+            jar.set(cookie['name'], cookie['value'], domain=cookie.get('domain', ''))
+            
+        user_agent = self.driver.execute_script("return navigator.userAgent")
+        headers = {
+            "User-Agent": user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
         }
         
         try:
-            # Strategy 1: Parse from table header cells (new BOSS format)
-            # Header format: "Abschluss:[82] Bachelor an UniversitätenStudiengang:[B62] Angewandte Informatik"
-            header_cells = soup.find_all('th')
-            for cell in header_cells:
-                text = cell.get_text(strip=True)
-                
-                # Look for Abschluss pattern
-                abschluss_match = re.search(r'Abschluss:\[(\d+)\]\s*([^S]+)', text, re.IGNORECASE)
-                if abschluss_match:
-                    degree_info['abschluss_code'] = abschluss_match.group(1)
-                    type_text = abschluss_match.group(2).strip()
-                    if 'Bachelor' in type_text:
-                        degree_info['degree_type'] = 'Bachelor'
-                    elif 'Master' in type_text:
-                        degree_info['degree_type'] = 'Master'
-                    else:
-                        degree_info['degree_type'] = type_text.split()[0] if type_text else None
-                
-                # Look for Studiengang pattern
-                studiengang_match = re.search(r'Studiengang:\[([A-Z]\d+)\]\s*(.+?)(?:\(|$)', text, re.IGNORECASE)
-                if studiengang_match:
-                    degree_info['degree_code'] = studiengang_match.group(1)
-                    degree_info['degree_subject'] = studiengang_match.group(2).strip()
-            
-            # Strategy 2: Parse from page text if headers didn't work
-            if not degree_info['degree_type']:
-                # Look for pattern like "Abschluss 82 Bachelor"
-                abschluss_text_match = re.search(r'Abschluss\s+(\d+)\s+(Bachelor|Master)', page_source, re.IGNORECASE)
-                if abschluss_text_match:
-                    degree_info['abschluss_code'] = abschluss_text_match.group(1)
-                    degree_info['degree_type'] = abschluss_text_match.group(2)
-            
-            if not degree_info['degree_subject']:
-                # Look for subject patterns in font elements
-                font_elements = soup.find_all('font', class_='liste1')
-                for font in font_elements:
-                    text = font.get_text(strip=True)
-                    # Pattern: "Angewandte Informatik (PO-Version 2023)"
-                    po_match = re.search(r'(.+?)\s*\(PO-Version\s+(\d+)\)', text)
-                    if po_match:
-                        degree_info['degree_subject'] = po_match.group(1).strip()
-                        degree_info['po_version'] = po_match.group(2)
-                        break
-            
-            # Strategy 3: Extract from URL parameters
-            if not degree_info['degree_code']:
-                code_match = re.search(r'stg=([A-Z]\d+)', page_source)
-                if code_match:
-                    degree_info['degree_code'] = code_match.group(1)
-                    # Infer subject from degree code
-                    code = code_match.group(1).upper()
-                    if code == 'B62':
-                        if not degree_info['degree_subject']:
-                            degree_info['degree_subject'] = 'Angewandte Informatik'
-                        if not degree_info['degree_type']:
-                            degree_info['degree_type'] = 'Bachelor'
-            
-            # Strategy 4: Extract abschluss from URL
-            if not degree_info['abschluss_code']:
-                abschl_match = re.search(r'abschl(?:uss)?[:=](\d+)', page_source)
-                if abschl_match:
-                    degree_info['abschluss_code'] = abschl_match.group(1)
-                    # Infer type from common codes
-                    if degree_info['abschluss_code'] == '82':
-                        degree_info['degree_type'] = 'Bachelor'
-                    elif degree_info['abschluss_code'] == '88':
-                        degree_info['degree_type'] = 'Master'
-            
-            logger.info(f"Extracted degree identity: {degree_info}")
-            
+            with httpx.Client(cookies=jar, headers=headers, timeout=20.0, follow_redirects=True) as client:
+                response = client.get(url)
+                response.raise_for_status()
+                return response.text
         except Exception as e:
-            logger.warning(f"Error extracting degree identity: {e}")
-        
-        return degree_info
-
-    def extract_grades(self):
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        
-        # Find the main data table. HIS-QIS tables often have obscure classes.
-        # Look for table headers
-        tables = soup.find_all("table")
-        target_table = None
-        
-        for table in tables:
-            text = table.get_text()
-            if "Prüfung" in text or "Exam" in text or "ECTS" in text:
-                target_table = table
-                break
-        
-        if not target_table:
-            logger.warning("No grade table found!")
-            return [], {}
-        
-        # Log first row for structure debugging
-        first_row = target_table.find("tr")
-        if first_row:
-            cells = first_row.find_all(["th", "td"])
-            logger.info(f"Table structure, first row ({len(cells)} cells): {[c.get_text(strip=True)[:30] for c in cells]}")
-            
-        rows = target_table.find_all("tr")
-        exams = []
-        total_ects = 0.0
-        grade_sum = 0.0
-        graded_count = 0
-        
-        # Heuristic mapping based on common HIS table layout
-        # Typical header: Nr, Text, Sem, Note, Status, ECTS, ...
-        # We need to robustly map indices by header row
-        
-        header_map = {}
-        data_rows = []
-        
-        for row in rows:
-            th_list = row.find_all("th")
-            if th_list:
-                for idx, th in enumerate(th_list):
-                    t = th.get_text(strip=True).lower()
-                    logger.info(f"Header col {idx}: '{t}'")
-                    if "nr" in t or ("id" in t and "ver" not in t): header_map['id'] = idx
-                    elif "text" in t or "bezeichnung" in t: header_map['title'] = idx
-                    elif "sem" in t: header_map['semester'] = idx
-                    elif "note" in t or "grade" in t: header_map['grade'] = idx
-                    elif "status" in t or "vermerk" in t: header_map['status'] = idx
-                    elif "ects" in t or "credit" in t or "bonus" in t: header_map['credits'] = idx
-                continue
-            
-            # Data row
-            td_list = row.find_all("td")
-            if not td_list or len(td_list) < 3: continue 
-            data_rows.append(td_list)
-
-        # Log the header map for debugging
-        logger.info(f"Header map: {header_map}")
-        
-        # Fallback if map is empty (standard layout assumption)
-        if not header_map:
-            header_map = {'id': 0, 'title': 1, 'semester': 2, 'grade': 3, 'status': 4, 'credits': 5}
-
-        for cells in data_rows:
-            try:
-                exam = {}
-                
-                # Title
-                idx = header_map.get('title')
-                if idx is not None and idx < len(cells):
-                    exam['title'] = cells[idx].get_text(strip=True)
-                
-                # ID
-                idx = header_map.get('id')
-                if idx is not None and idx < len(cells):
-                    exam['exam_id'] = cells[idx].get_text(strip=True)
-                    
-                # Semester
-                idx = header_map.get('semester')
-                if idx is not None and idx < len(cells):
-                    exam['semester'] = cells[idx].get_text(strip=True)
-                
-                # Grade
-                idx = header_map.get('grade')
-                raw_grade = ""
-                if idx is not None and idx < len(cells):
-                    raw_grade = cells[idx].get_text(strip=True).replace(',', '.')
-                
-                try:
-                     exam['grade'] = float(raw_grade)
-                     if exam['grade'] > 0:
-                         grade_sum += exam['grade']
-                         graded_count += 1
-                except:
-                     exam['grade'] = None
-                     
-                # Status
-                idx = header_map.get('status')
-                if idx is not None and idx < len(cells):
-                    exam['status'] = cells[idx].get_text(strip=True)
-                    
-                # Credits
-                idx = header_map.get('credits')
-                try:
-                    if idx is not None and idx < len(cells):
-                        c = float(cells[idx].get_text(strip=True).replace(',', '.'))
-                        exam['credits'] = c
-                        if exam.get('status') == "bestanden" or (exam['grade'] and exam['grade'] <= 4.0):
-                             total_ects += c
-                except:
-                    exam['credits'] = 0.0
-                
-                if exam.get('title'):
-                    exams.append(exam)
-                    
-            except Exception as e:
-                logger.warning(f"Failed to parse row: {e}")
-                continue
-
-        # The "Durchschnittsnote alle Module" is always the LAST row in the table
-        # Both the official GPA (grade) and total ECTS (credits/bonus) are in this row
-        official_gpa = 0.0
-        official_ects = 0.0
-        if exams:
-            last_exam = exams[-1]
-            if last_exam.get('grade'):
-                official_gpa = last_exam['grade']
-                logger.info(f"Found official GPA from last row: {official_gpa}")
-            if last_exam.get('credits'):
-                official_ects = last_exam['credits']
-                logger.info(f"Found total ECTS from last row: {official_ects}")
-        
-        # Use official values if found
-        final_gpa = official_gpa if official_gpa > 0 else (round(grade_sum / graded_count, 2) if graded_count > 0 else 0.0)
-        final_ects = official_ects if official_ects > 0 else total_ects
-        
-        summary = {
-            "total_credits": final_ects,
-            "current_gpa": final_gpa
-        }
-        
-        logger.info(f"Extraction complete: {len(exams)} exams, {final_ects} ECTS, GPA: {final_gpa}")
-        
-        return exams, summary
+            logger.error(f"Failed to fetch via httpx: {e}")
+            return None
 
     def get_data(self):
         try:
@@ -604,10 +429,33 @@ class BossScraper:
             self.login()
             self.navigate_to_grades()
             
-            # Extract degree identity before navigating to detailed grades
-            degree_identity = self.extract_degree_identity()
+            # Now that we are at the grades page, let's try to "turbo-charge" 
+            # by fetching the final HTML content via httpx if we can determine the URL.
+            current_url = self.driver.current_url
+            logger.info(f"Final grade page URL: {current_url}")
             
-            exams, summary = self.extract_grades()
+            # Attempt to fetch via requests for faster processing (no JS overhead)
+            html_content = self._fetch_page_via_requests(current_url)
+            
+            if html_content:
+                logger.info("Successfully fetched HTML via hybrid httpx mode.")
+                # We update the driver's page source (fake it or just parse it)
+                # But since extract methods use soup, we can just pass content or parse it directly
+                # For compatibility, we'll use a local soup object or just let the extract methods know.
+                pass
+            else:
+                 logger.warning("Hybrid mode failed, falling back to Selenium source.")
+                 html_content = self.driver.page_source
+
+            # Extract degree identity
+            soup = BeautifulSoup(html_content, 'html.parser')
+            # Modification: extract methods now use the provided soup if needed, 
+            # or we can just replace self.driver.page_source logic.
+            # To keep it simple, I'll temporarily 'mock' the driver's page source or just edit the methods.
+            
+            # Let's slightly modify extract methods to accept optional html
+            degree_identity = self.extract_degree_identity_from_content(html_content)
+            exams, summary = self.extract_grades_from_content(html_content)
             
             if not exams:
                  logger.warning("No exams found! Dumping debug info.")
@@ -627,3 +475,113 @@ class BossScraper:
         finally:
             if self.driver:
                 self.driver.quit()
+
+    # Refactored Extraction Methods
+    def extract_degree_identity_from_content(self, html_content):
+        import re
+        soup = BeautifulSoup(html_content, 'html.parser')
+        degree_info = {'degree_type': None,'degree_subject': None,'po_version': None,'degree_code': None,'abschluss_code': None}
+        try:
+            # Strategy 1: Parse from table header cells (new BOSS format)
+            header_cells = soup.find_all('th')
+            for cell in header_cells:
+                text = cell.get_text(strip=True)
+                abschluss_match = re.search(r'Abschluss:\[(\d+)\]\s*([^S]+)', text, re.IGNORECASE)
+                if abschluss_match:
+                    degree_info['abschluss_code'] = abschluss_match.group(1)
+                    type_text = abschluss_match.group(2).strip()
+                    if 'Bachelor' in type_text: degree_info['degree_type'] = 'Bachelor'
+                    elif 'Master' in type_text: degree_info['degree_type'] = 'Master'
+                    else: degree_info['degree_type'] = type_text.split()[0] if type_text else None
+                studiengang_match = re.search(r'Studiengang:\[([A-Z]\d+)\]\s*(.+?)(?:\(|$)', text, re.IGNORECASE)
+                if studiengang_match:
+                    degree_info['degree_code'] = studiengang_match.group(1)
+                    degree_info['degree_subject'] = studiengang_match.group(2).strip()
+            
+            if not degree_info['degree_type']:
+                abschluss_text_match = re.search(r'Abschluss\s+(\d+)\s+(Bachelor|Master)', html_content, re.IGNORECASE)
+                if abschluss_text_match:
+                    degree_info['abschluss_code'] = abschluss_text_match.group(1)
+                    degree_info['degree_type'] = abschluss_text_match.group(2)
+            
+            if not degree_info['degree_subject']:
+                font_elements = soup.find_all('font', class_='liste1')
+                for font in font_elements:
+                    text = font.get_text(strip=True)
+                    po_match = re.search(r'(.+?)\s*\(PO-Version\s+(\d+)\)', text)
+                    if po_match:
+                        degree_info['degree_subject'] = po_match.group(1).strip()
+                        degree_info['po_version'] = po_match.group(2)
+                        break
+        except: pass
+        return degree_info
+
+    def extract_grades_from_content(self, html_content):
+        soup = BeautifulSoup(html_content, 'html.parser')
+        tables = soup.find_all("table")
+        target_table = None
+        for table in tables:
+            text = table.get_text()
+            if "Prüfung" in text or "Exam" in text or "ECTS" in text:
+                target_table = table
+                break
+        if not target_table: return [], {}
+        rows = target_table.find_all("tr")
+        exams = []
+        total_ects = 0.0; grade_sum = 0.0; graded_count = 0
+        header_map = {}
+        data_rows = []
+        for row in rows:
+            th_list = row.find_all("th")
+            if th_list:
+                for idx, th in enumerate(th_list):
+                    t = th.get_text(strip=True).lower()
+                    if "nr" in t or ("id" in t and "ver" not in t): header_map['id'] = idx
+                    elif "text" in t or "bezeichnung" in t: header_map['title'] = idx
+                    elif "sem" in t: header_map['semester'] = idx
+                    elif "note" in t or "grade" in t: header_map['grade'] = idx
+                    elif "status" in t or "vermerk" in t: header_map['status'] = idx
+                    elif "ects" in t or "credit" in t or "bonus" in t: header_map['credits'] = idx
+                continue
+            td_list = row.find_all("td")
+            if not td_list or len(td_list) < 3: continue 
+            data_rows.append(td_list)
+        if not header_map: header_map = {'id': 0, 'title': 1, 'semester': 2, 'grade': 3, 'status': 4, 'credits': 5}
+        for cells in data_rows:
+            try:
+                exam = {}
+                idx = header_map.get('title')
+                if idx is not None and idx < len(cells): exam['title'] = cells[idx].get_text(strip=True)
+                idx = header_map.get('id')
+                if idx is not None and idx < len(cells): exam['exam_id'] = cells[idx].get_text(strip=True)
+                idx = header_map.get('semester')
+                if idx is not None and idx < len(cells): exam['semester'] = cells[idx].get_text(strip=True)
+                idx = header_map.get('grade')
+                raw_grade = ""
+                if idx is not None and idx < len(cells): raw_grade = cells[idx].get_text(strip=True).replace(',', '.')
+                try:
+                     exam['grade'] = float(raw_grade)
+                     if exam['grade'] > 0:
+                         grade_sum += exam['grade']
+                         graded_count += 1
+                except: exam['grade'] = None
+                idx = header_map.get('status')
+                if idx is not None and idx < len(cells): exam['status'] = cells[idx].get_text(strip=True)
+                idx = header_map.get('credits')
+                try:
+                    if idx is not None and idx < len(cells):
+                        c = float(cells[idx].get_text(strip=True).replace(',', '.'))
+                        exam['credits'] = c
+                        if exam.get('status') == "bestanden" or (exam['grade'] and exam['grade'] <= 4.0):
+                             total_ects += c
+                except: exam['credits'] = 0.0
+                if exam.get('title'): exams.append(exam)
+            except: continue
+        official_gpa = 0.0; official_ects = 0.0
+        if exams:
+            last_exam = exams[-1]
+            if last_exam.get('grade'): official_gpa = last_exam['grade']
+            if last_exam.get('credits'): official_ects = last_exam['credits']
+        final_gpa = official_gpa if official_gpa > 0 else (round(grade_sum / graded_count, 2) if graded_count > 0 else 0.0)
+        final_ects = official_ects if official_ects > 0 else total_ects
+        return exams, {"total_credits": final_ects, "current_gpa": final_gpa}

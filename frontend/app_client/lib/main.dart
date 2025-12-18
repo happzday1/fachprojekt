@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'api_service.dart';
+
 import 'models.dart';
 import 'session_service.dart';
 import 'widgets/glass_container.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/workspace_page.dart';
-import 'pages/exams_page.dart';
+
 import 'widgets/ayla_chat.dart';
 import 'widgets/sidebar_menu_item.dart';
 
@@ -32,34 +32,34 @@ class Ayla extends StatelessWidget {
           theme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.light,
-            scaffoldBackgroundColor: Colors.white,
+            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
             colorScheme: const ColorScheme.light(
-              primary: Colors.black,
+              primary: Color(0xFF1E293B),
               secondary: Color(0xFF64748B),
               surface: Colors.white,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
+              onSurface: Color(0xFF1E293B),
             ),
             textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme).apply(
-              bodyColor: Colors.black,
-              displayColor: Colors.black,
+              bodyColor: const Color(0xFF1E293B),
+              displayColor: const Color(0xFF1E293B),
             ),
+            iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF000000),
+            scaffoldBackgroundColor: const Color(0xFF020617),
             colorScheme: const ColorScheme.dark(
               primary: Colors.white,
               secondary: Color(0xFF94A3B8),
-              surface: Color(0xFF111111),
-              onPrimary: Colors.black,
+              surface: Color(0xFF0F172A),
               onSurface: Colors.white,
             ),
             textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme).apply(
               bodyColor: Colors.white,
               displayColor: Colors.white,
             ),
+            iconTheme: const IconThemeData(color: Colors.white),
           ),
           home: const LoginPage(),
         );
@@ -88,6 +88,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Widget currentPage;
     switch (_selectedIndex) {
       case 0:
@@ -95,9 +96,6 @@ class _MainScreenState extends State<MainScreen> {
         break;
       case 1:
         currentPage = WorkspacePage(session: widget.session, onNavigate: (index) => setState(() => _selectedIndex = index));
-        break;
-      case 2:
-        currentPage = ExamsPage(session: widget.session, onNavigate: (index) => setState(() => _selectedIndex = index));
         break;
       default:
         currentPage = DashboardPage(key: ValueKey(_dashboardKey), session: widget.session, onNavigate: (index) => setState(() => _selectedIndex = index));
@@ -112,47 +110,85 @@ class _MainScreenState extends State<MainScreen> {
             Positioned.fill(
               child: GestureDetector(
                 onTap: () => setState(() => _isSidebarOpen = false),
-                child: Container(color: Colors.black.withOpacity(0.3)),
+                child: Container(color: Colors.black.withOpacity(0.4)),
               ),
             ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            left: _isSidebarOpen ? 0 : -240,
+            curve: Curves.fastOutSlowIn,
+            left: _isSidebarOpen ? 0 : -260,
             top: 0,
             bottom: 0,
             child: GlassContainer(
-              width: 240,
+              width: 260,
               borderRadius: 0,
-              color: Theme.of(context).brightness == Brightness.dark ? Colors.black.withOpacity(0.6) : Colors.white.withOpacity(0.8),
-              border: Border(right: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12)),
+              opacity: isDark ? 0.08 : 0.4,
+              blur: 20,
+              border: Border(right: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.fromLTRB(28, 60, 20, 40),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("Ayla", style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)),
-                        IconButton(icon: Icon(Icons.close, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20), onPressed: () => setState(() => _isSidebarOpen = false)),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF38B6FF).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          "Ayla", 
+                          style: GoogleFonts.inter(
+                            fontSize: 22, 
+                            fontWeight: FontWeight.w700, 
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                            letterSpacing: -0.5,
+                          )
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  SidebarMenuItem(icon: Icons.dashboard_rounded, label: "Dashboard", isSelected: _selectedIndex == 0, onTap: () => setState(() { _selectedIndex = 0; _isSidebarOpen = false; })),
-                  const SizedBox(height: 8),
-                  SidebarMenuItem(icon: Icons.workspaces_rounded, label: "Workspace", isSelected: _selectedIndex == 1, onTap: () => setState(() { _selectedIndex = 1; _isSidebarOpen = false; })),
-                  const SizedBox(height: 8),
-                  SidebarMenuItem(icon: Icons.school_rounded, label: "Exams", isSelected: _selectedIndex == 2, onTap: () => setState(() { _selectedIndex = 2; _isSidebarOpen = false; })),
+                  SidebarMenuItem(
+                    icon: Icons.grid_view_rounded, 
+                    label: "Overview", 
+                    isSelected: _selectedIndex == 0, 
+                    onTap: () => setState(() { _selectedIndex = 0; _isSidebarOpen = false; })
+                  ),
+                  const SizedBox(height: 4),
+                  SidebarMenuItem(
+                    icon: Icons.layers_rounded, 
+                    label: "Workspace", 
+                    isSelected: _selectedIndex == 1, 
+                    onTap: () => setState(() { _selectedIndex = 1; _isSidebarOpen = false; })
+                  ),
                   const Spacer(),
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () async { await SessionService.clearSession(); if (context.mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage())); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D3748), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), child: const Text("Refresh Data"))),
+                        _SidebarActionButton(
+                          label: "Reset Data",
+                          icon: Icons.refresh_rounded,
+                          onTap: () async { 
+                            await SessionService.clearSession(); 
+                            if (context.mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage())); 
+                          },
+                        ),
                         const SizedBox(height: 8),
-                        SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () async { await SessionService.clearCredentials(); if (context.mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage())); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D3748), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))), child: const Text("Logout"))),
+                        _SidebarActionButton(
+                          label: "Sign Out",
+                          icon: Icons.logout_rounded,
+                          onTap: () async { 
+                            await SessionService.clearCredentials(); 
+                            if (context.mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage())); 
+                          },
+                          isDestructive: true,
+                        ),
                       ],
                     ),
                   ),
@@ -162,28 +198,88 @@ class _MainScreenState extends State<MainScreen> {
           ),
           if (!_isSidebarOpen)
             Positioned(
-              top: 20,
-              left: 20,
+              top: 24,
+              left: 24,
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => setState(() => _isSidebarOpen = !_isSidebarOpen),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Theme.of(context).brightness == Brightness.dark ? Colors.black.withOpacity(0.5) : Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(8), border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.black12)), child: Icon(Icons.menu, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 24)),
+                  onTap: () => setState(() => _isSidebarOpen = true),
+                  borderRadius: BorderRadius.circular(12),
+                  child: GlassContainer(
+                    padding: const EdgeInsets.all(10),
+                    borderRadius: 12,
+                    opacity: isDark ? 0.05 : 0.1,
+                    child: Icon(
+                      Icons.menu_open_rounded, 
+                      color: isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7), 
+                      size: 22
+                    ),
+                  ),
                 ),
               ),
             ),
           if (_isChatOpen)
             Positioned(
-              right: 16,
-              bottom: 16,
+              right: 24,
+              bottom: 24,
               child: AylaFloatingChat(session: widget.session, onClose: () => setState(() => _isChatOpen = false), onEventAdded: _refreshDashboard),
             ),
         ],
       ),
       floatingActionButton: _isChatOpen ? null : AylaChatButton(
         onPressed: () => setState(() => _isChatOpen = true),
-        initials: widget.session.profileName.trim().isNotEmpty ? widget.session.profileName.trim().split(' ')[0][0].toUpperCase() : null,
+      ),
+    );
+  }
+}
+
+class _SidebarActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _SidebarActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isDestructive 
+              ? Colors.redAccent.withOpacity(0.05) 
+              : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDestructive 
+                ? Colors.redAccent.withOpacity(0.1) 
+                : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: isDestructive ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black54)),
+            const SizedBox(width: 12),
+            Text(
+              label, 
+              style: GoogleFonts.inter(
+                fontSize: 13, 
+                fontWeight: FontWeight.w500, 
+                color: isDestructive ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black54)
+              )
+            ),
+          ],
+        ),
       ),
     );
   }

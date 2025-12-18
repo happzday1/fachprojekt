@@ -125,17 +125,23 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     if (_isCheckingCache) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       return Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFFF8FAFC),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SpinKitThreeBounce(color: Colors.white, size: 30),
-              const SizedBox(height: 16),
+              SpinKitDoubleBounce(color: isDark ? Colors.white : const Color(0xFF1E293B), size: 40),
+              const SizedBox(height: 24),
               Text(
-                "Loading...",
-                style: GoogleFonts.inter(color: Colors.grey[600]),
+                "Initializing Ayla",
+                style: GoogleFonts.inter(
+                  color: isDark ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.6),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 2,
+                ),
               ),
             ],
           ),
@@ -144,201 +150,219 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF3A7BD5);
-    final accentColor = const Color(0xFF00D2FF);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF000000) : Colors.grey[50],
+      backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFFF8FAFC),
       body: Stack(
         children: [
+          // Subtle Ambient Glow
           Positioned(
-            top: -100,
-            right: -100,
+            top: -150,
+            left: -150,
             child: Container(
-              width: 300,
-              height: 300,
+              width: 500,
+              height: 500,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark ? primaryColor.withOpacity(0.05) : Colors.blue.withOpacity(0.05),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            left: -50,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? accentColor.withOpacity(0.05) : Colors.teal.withOpacity(0.05),
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFF38B6FF).withOpacity(isDark ? 0.05 : 0.03),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: GlassContainer(
-                width: 400,
-                padding: const EdgeInsets.all(32),
-                borderRadius: 24,
-                opacity: 0.05,
-                blur: 20,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.school_rounded, size: 56, color: Colors.white70),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Ayla",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: -1,
-                      ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // App Icon/Logo
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
                     ),
-                    Text(
-                      "Workspace for students",
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.white54,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    child: Icon(
+                      Icons.auto_awesome_rounded, 
+                      size: 48, 
+                      color: isDark ? Colors.white : const Color(0xFF1E293B)
                     ),
-                    const SizedBox(height: 40),
-                    TextField(
-                      controller: _usernameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: "Username",
-                        labelStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.person_outline, color: Colors.grey[400]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF00D2FF), width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.05),
-                      ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    "Ayla",
+                    style: GoogleFonts.inter(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      letterSpacing: -1.5,
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: "Password",
-                        labelStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[400]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF00D2FF), width: 2),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.05),
-                      ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Your focused academic space.",
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                      fontWeight: FontWeight.w400,
                     ),
-                    const SizedBox(height: 24),
-                    if (_errorMessage != null && _errorMessage!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.withOpacity(0.5), width: 1),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.redAccent, size: 24),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: const TextStyle(
-                                    color: Colors.redAccent,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.4,
-                                    letterSpacing: 0.2,
-                                  ),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.visible,
-                                ),
-                              ),
-                            ],
+                  ),
+                  const SizedBox(height: 48),
+                  
+                  // Login Card
+                  GlassContainer(
+                    width: 440,
+                    padding: const EdgeInsets.all(40),
+                    borderRadius: 32,
+                    opacity: isDark ? 0.05 : 0.03,
+                    blur: 30,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          "Welcome Back",
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
                           ),
                         ),
-                      ),
-                    GestureDetector(
-                      onTap: _isLoading ? null : _handleLogin,
-                      child: Container(
-                        height: 54,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00D2FF), Color(0xFF3A7BD5)],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF3A7BD5).withOpacity(0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                        const SizedBox(height: 24),
+                        _buildInputField(
+                          controller: _usernameController,
+                          label: "University Username",
+                          icon: Icons.alternate_email_rounded,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          controller: _passwordController,
+                          label: "Service Password",
+                          icon: Icons.lock_outline_rounded,
+                          isDark: isDark,
+                          isPassword: true,
+                        ),
+                        const SizedBox(height: 32),
+                        
+                        if (_errorMessage != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.redAccent.withOpacity(0.1)),
                             ),
-                          ],
-                        ),
-                        child: Center(
-                          child: _isLoading
-                              ? const SpinKitThreeBounce(color: Colors.white, size: 20)
-                              : Text(
-                                  "Sign In",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 18),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                        
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDark ? Colors.white : const Color(0xFF1E293B),
+                            foregroundColor: isDark ? Colors.black : Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20, 
+                                  width: 20, 
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey)
+                                )
+                              : Text(
+                                  "Enter Workspace",
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15),
+                                ),
                         ),
-                      ),
+                        
+                        if (_isLoading) ...[
+                          const SizedBox(height: 24),
+                          Text(
+                            "Securely synchronizing with BOSS & Moodle...\nThis protocol takes approximately 30 seconds.",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              color: isDark ? Colors.white38 : Colors.black38, 
+                              fontSize: 12,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (_isLoading) ...[
-                      const SizedBox(height: 24),
-                      Text(
-                        "Connecting to Moodle & BOSS...\nThis usually takes about 30 seconds.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    bool isPassword = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white38 : Colors.black38,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+          ),
+          child: TextField(
+            controller: controller,
+            obscureText: isPassword,
+            style: GoogleFonts.inter(
+              color: isDark ? Colors.white : const Color(0xFF1E293B),
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, color: isDark ? Colors.white24 : Colors.black26, size: 20),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              hintText: "Enter placeholder...",
+              hintStyle: TextStyle(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

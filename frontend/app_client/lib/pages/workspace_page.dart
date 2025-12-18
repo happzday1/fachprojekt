@@ -172,22 +172,97 @@ class _WorkspacePageState extends State<WorkspacePage> {
       backgroundColor: Colors.transparent,
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 80, top: 24, right: 24, bottom: 24),
+          // Header
+          Container(
+            padding: const EdgeInsets.only(left: 88, top: 32, right: 32, bottom: 24),
             child: Row(
               children: [
-                Text("Your Workspaces", style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Workspaces",
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Organize your studies and research",
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
                 const Spacer(),
-                ElevatedButton.icon(onPressed: _createWorkspace, icon: const Icon(Icons.add, size: 20), label: Text("New Workspace", style: GoogleFonts.inter()), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3A7BD5), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12))),
+                InkWell(
+                  onTap: _createWorkspace,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_rounded, size: 18, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                        const SizedBox(width: 8),
+                        Text(
+                          "New Workspace",
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
+          
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF3A7BD5)))
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey))
                 : _workspaces.isEmpty
-                    ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.folder_open_rounded, size: 80, color: isDark ? Colors.white24 : Colors.black26), const SizedBox(height: 16), Text("No workspaces yet", style: GoogleFonts.inter(fontSize: 18, color: Colors.grey)), const SizedBox(height: 8), Text("Create one to get started!", style: GoogleFonts.inter(color: Colors.grey))]))
-                    : Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: GridView.builder(gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.2), itemCount: _workspaces.length, itemBuilder: (context, index) { final workspace = _workspaces[index]; return _WorkspaceCard(name: workspace['name'] ?? 'Untitled', onTap: () => _openWorkspace(workspace), onDelete: () => _deleteWorkspace(workspace['id'])); })),
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.folder_open_rounded, size: 64, color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                            const SizedBox(height: 24),
+                            Text("No workspaces yet", style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white38 : Colors.black38)),
+                            const SizedBox(height: 8),
+                            Text("Create your first one to get started", style: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24))),
+                          ],
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+                        child: GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4, 
+                            crossAxisSpacing: 24, 
+                            mainAxisSpacing: 24, 
+                            childAspectRatio: 1.1,
+                          ),
+                          itemCount: _workspaces.length,
+                          itemBuilder: (context, index) {
+                            final workspace = _workspaces[index];
+                            return _WorkspaceCard(
+                              name: workspace['name'] ?? 'Untitled', 
+                              onTap: () => _openWorkspace(workspace), 
+                              onDelete: () => _deleteWorkspace(workspace['id']),
+                            );
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -199,59 +274,348 @@ class _WorkspacePageState extends State<WorkspacePage> {
       backgroundColor: Colors.transparent,
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 80, top: 16, right: 16, bottom: 16),
+          // Header
+          Container(
+            padding: const EdgeInsets.only(left: 88, top: 24, right: 32, bottom: 16),
             child: Row(
               children: [
-                Container(decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.black12, borderRadius: BorderRadius.circular(8)), child: IconButton(icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white : Colors.black), onPressed: () { _saveNotes(); setState(() => _selectedWorkspace = null); })),
+                IconButton(
+                  icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20),
+                  onPressed: () { _saveNotes(); setState(() => _selectedWorkspace = null); },
+                ),
                 const SizedBox(width: 16),
-                Text(_selectedWorkspace?['name'] ?? 'Workspace', style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)),
+                Text(
+                  _selectedWorkspace?['name'] ?? 'Workspace', 
+                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF1E293B)),
+                ),
+                const Spacer(),
+                _buildActionButton(Icons.save_rounded, "Save Notes", _saveNotes, isDark),
               ],
             ),
           ),
+          
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF3A7BD5)))
-                : Row(
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: GlassContainer(
-                          margin: const EdgeInsets.all(8), borderRadius: 16, opacity: isDark ? 0.03 : 0.05, blur: 10,
-                          child: Column(children: [
-                            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : Colors.black12))), child: Row(children: [Icon(Icons.chat_rounded, color: const Color(0xFF3A7BD5), size: 20), const SizedBox(width: 8), Text("AI Chat", style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black))])),
-                            Expanded(child: ListView.builder(padding: const EdgeInsets.all(12), itemCount: _chatMessages.length + (_isChatLoading ? 1 : 0), itemBuilder: (context, index) { if (index == _chatMessages.length && _isChatLoading) { return Padding(padding: const EdgeInsets.all(8), child: Row(children: [const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)), const SizedBox(width: 8), Text("Ayla is thinking...", style: GoogleFonts.inter(color: Colors.grey))])); } final msg = _chatMessages[index]; final isUser = msg['role'] == 'user'; return Align(alignment: isUser ? Alignment.centerRight : Alignment.centerLeft, child: Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.4), decoration: BoxDecoration(color: isUser ? const Color(0xFF3A7BD5).withOpacity(0.12) : (isDark ? Colors.white.withOpacity(0.04) : Colors.grey[100]), borderRadius: BorderRadius.circular(16), border: Border.all(color: isUser ? const Color(0xFF3A7BD5).withOpacity(0.2) : (isDark ? Colors.white10 : Colors.black.withOpacity(0.05)))), child: Text(msg['message'] ?? '', style: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.9) : Colors.black87, height: 1.5, fontSize: 14)))); })),
-                            Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.black12))), child: Row(children: [Expanded(child: TextField(controller: _chatController, style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black), decoration: InputDecoration(hintText: "Ask Ayla...", hintStyle: GoogleFonts.inter(color: Colors.grey), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)), onSubmitted: (_) => _sendChatMessage())), const SizedBox(width: 8), IconButton(icon: const Icon(Icons.send_rounded, color: Color(0xFF3A7BD5)), onPressed: _sendChatMessage)]))
-                          ]),
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey))
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: Row(
+                      children: [
+                        // Chat Pane
+                        Expanded(
+                          flex: 6,
+                          child: GlassContainer(
+                            borderRadius: 24,
+                            child: Column(
+                              children: [
+                                _buildPaneHeader(Icons.auto_awesome_rounded, "Ayla Chat", Colors.indigoAccent, isDark),
+                                Expanded(
+                                  child: ListView.builder(
+                                    padding: const EdgeInsets.all(20),
+                                    itemCount: _chatMessages.length + (_isChatLoading ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index == _chatMessages.length && _isChatLoading) {
+                                        return _buildTypingIndicator(isDark);
+                                      }
+                                      final msg = _chatMessages[index];
+                                      return _buildChatMessage(msg, isDark);
+                                    },
+                                  ),
+                                ),
+                                _buildChatInput(isDark),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        flex: 4,
-                        child: Column(children: [
-                          Expanded(
-                            child: GlassContainer(
-                              margin: const EdgeInsets.all(8), borderRadius: 16, opacity: isDark ? 0.03 : 0.05, blur: 10, 
-                              child: Column(children: [
-                                Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : Colors.black12))), child: Row(children: [Icon(Icons.folder_rounded, color: Colors.amber, size: 20), const SizedBox(width: 8), Text("Files", style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)), const Spacer(), TextButton.icon(onPressed: _uploadFile, icon: const Icon(Icons.upload_file, size: 16), label: Text("Upload", style: GoogleFonts.inter(fontSize: 12)))])), 
-                                Expanded(child: _files.isEmpty ? Center(child: Text("No files yet", style: GoogleFonts.inter(color: Colors.grey))) : ListView.builder(itemCount: _files.length, itemBuilder: (context, index) { final file = _files[index]; return ListTile(leading: Icon(Icons.insert_drive_file, color: isDark ? Colors.white54 : Colors.black54), title: Text(file['filename'] ?? 'File', style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black)), trailing: IconButton(icon: Icon(Icons.delete_outline, size: 18, color: Colors.red[300]), onPressed: () => _deleteFile(file['id']))); }))
-                              ])
-                            )
+                        const SizedBox(width: 24),
+                        
+                        // Right Side Panes
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            children: [
+                              // Files Pane
+                              Expanded(
+                                flex: 4,
+                                child: GlassContainer(
+                                  borderRadius: 24,
+                                  child: Column(
+                                    children: [
+                                      _buildPaneHeaderWithAction(
+                                        Icons.file_copy_rounded, 
+                                        "Materials", 
+                                        Colors.amber, 
+                                        Icons.add_rounded, 
+                                        _uploadFile, 
+                                        isDark,
+                                      ),
+                                      Expanded(
+                                        child: _files.isEmpty
+                                            ? _buildEmptyState(Icons.file_upload_outlined, "No files uploaded", isDark)
+                                            : ListView.builder(
+                                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                                itemCount: _files.length,
+                                                itemBuilder: (context, index) => _buildFileItem(_files[index], isDark),
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              
+                              // Notes Pane
+                              Expanded(
+                                flex: 6,
+                                child: GlassContainer(
+                                  borderRadius: 24,
+                                  child: Column(
+                                    children: [
+                                      _buildPaneHeader(Icons.edit_note_rounded, "Workspace Notes", Colors.tealAccent, isDark),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                          child: TextField(
+                                            controller: _notesController,
+                                            maxLines: null,
+                                            expands: true,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 14, 
+                                              height: 1.6, 
+                                              color: isDark ? Colors.white.withOpacity(0.8) : Colors.black87,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: "Synthesize your knowledge here...\n\nAyla will use these notes to provide better context.",
+                                              hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                                              border: InputBorder.none,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Expanded(
-                            child: GlassContainer(
-                              margin: const EdgeInsets.all(8), borderRadius: 16, opacity: isDark ? 0.03 : 0.05, blur: 10, 
-                              child: Column(children: [
-                                Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(border: Border(bottom: BorderSide(color: isDark ? Colors.white12 : Colors.black12))), child: Row(children: [Icon(Icons.edit_note_rounded, color: Colors.blue, size: 20), const SizedBox(width: 8), Text("Notes", style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black)), const Spacer(), TextButton.icon(onPressed: _saveNotes, icon: const Icon(Icons.save, size: 16), label: Text("Save", style: GoogleFonts.inter(fontSize: 12)))])), 
-                                Expanded(child: Padding(padding: const EdgeInsets.all(8), child: TextField(controller: _notesController, maxLines: null, expands: true, style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black), decoration: InputDecoration(hintText: "Write your notes here...\n\nAyla can read these notes and help you!", hintStyle: GoogleFonts.inter(color: Colors.grey), border: InputBorder.none))))
-                              ])
-                            )
-                          ),
-                        ]),
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPaneHeader(IconData icon, String title, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Icon(icon, color: color.withOpacity(0.7), size: 18),
+          const SizedBox(width: 12),
+          Text(
+            title.toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white54 : Colors.black54,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaneHeaderWithAction(IconData icon, String title, Color color, IconData actionIcon, VoidCallback onAction, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Icon(icon, color: color.withOpacity(0.7), size: 18),
+          const SizedBox(width: 12),
+          Text(
+            title.toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white54 : Colors.black54,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: Icon(actionIcon, size: 18, color: isDark ? Colors.white38 : Colors.black38),
+            onPressed: onAction,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatMessage(Map<String, dynamic> msg, bool isDark) {
+    final isUser = msg['role'] == 'user';
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.35),
+        decoration: BoxDecoration(
+          color: isUser 
+              ? Colors.indigoAccent.withOpacity(isDark ? 0.15 : 0.08) 
+              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isUser ? 20 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 20),
+          ),
+          border: Border.all(
+            color: isUser 
+                ? Colors.indigoAccent.withOpacity(0.2) 
+                : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))
+          ),
+        ),
+        child: Text(
+          msg['message'] ?? '',
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white.withOpacity(0.9) : Colors.black87,
+            height: 1.6,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatInput(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _chatController,
+              style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: "Collaborate with Ayla...",
+                hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              onSubmitted: (_) => _sendChatMessage(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.send_rounded, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7), size: 20),
+              onPressed: _sendChatMessage,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFileItem(Map<String, dynamic> file, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.insert_drive_file_rounded, size: 18, color: isDark ? Colors.white38 : Colors.black38),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              file['filename'] ?? 'File',
+              style: GoogleFonts.inter(color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7), fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withOpacity(0.5)),
+            onPressed: () => _deleteFile(file['id']),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 12, 
+            height: 12, 
+            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey)
+          ),
+          const SizedBox(width: 12),
+          Text(
+            "Ayla is thinking...", 
+            style: GoogleFonts.inter(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic)
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(IconData icon, String message, bool isDark) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 32, color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+          const SizedBox(height: 12),
+          Text(message, style: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24), fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String label, VoidCallback onTap, bool isDark) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white38 : Colors.black38),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -266,15 +630,49 @@ class _WorkspaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.05) : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: isDark ? Colors.white12 : Colors.black12)),
+    return GlassContainer(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.folder_rounded, size: 48, color: Colors.amber), const SizedBox(height: 12), Text(name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis)])),
-            Positioned(top: 4, right: 4, child: IconButton(icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey), onPressed: onDelete)),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.folder_rounded, size: 32, color: Colors.amber),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    name, 
+                    style: GoogleFonts.inter(
+                      fontSize: 15, 
+                      fontWeight: FontWeight.w700, 
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    ), 
+                    textAlign: TextAlign.center, 
+                    maxLines: 1, 
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 12, 
+              right: 12, 
+              child: IconButton(
+                icon: Icon(Icons.delete_outline_rounded, size: 18, color: isDark ? Colors.white12 : Colors.black12), 
+                onPressed: onDelete,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ),
           ],
         ),
       ),
