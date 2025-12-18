@@ -526,23 +526,48 @@ class _CurrentClassesListCompact extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (classes.isEmpty) return Center(child: Text("No active classes", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)));
-    return Column(
-      children: classes.map((c) => Container(
-        margin: const EdgeInsets.only(bottom: 12), 
-        padding: const EdgeInsets.all(16), 
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02), 
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-        ), 
-        child: Row(
-          children: [
-            Icon(Icons.bookmark_rounded, size: 16, color: const Color(0xFF38B6FF).withOpacity(0.6)), 
-            const SizedBox(width: 16), 
-            Expanded(child: Text(c, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black87)))
-          ]
-        )
-      )).toList()
+    
+    final ScrollController controller = ScrollController();
+    
+    return SizedBox(
+      height: 180, // Height for roughly 3 items
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          scrollbarTheme: ScrollbarThemeData(
+            thumbColor: WidgetStateProperty.all(isDark ? Colors.white24 : Colors.black12),
+            radius: const Radius.circular(8),
+            thickness: WidgetStateProperty.all(4),
+          ),
+        ),
+        child: Scrollbar(
+          controller: controller,
+          thumbVisibility: true,
+          child: ListView.builder(
+            controller: controller,
+            padding: const EdgeInsets.only(right: 8), // Room for scrollbar
+            itemCount: classes.length,
+            itemBuilder: (context, index) {
+              final c = classes[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12), 
+                padding: const EdgeInsets.all(16), 
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02), 
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                ), 
+                child: Row(
+                  children: [
+                    Icon(Icons.bookmark_rounded, size: 16, color: const Color(0xFF38B6FF).withOpacity(0.6)), 
+                    const SizedBox(width: 16), 
+                    Expanded(child: Text(c, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black87)))
+                  ]
+                )
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }

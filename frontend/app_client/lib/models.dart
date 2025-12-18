@@ -182,7 +182,10 @@ class SessionData {
     List<ExamCategory> examRequirements = examRequirementsList.map((i) => ExamCategory.fromJson(i)).toList();
 
     var classesList = json['current_classes'] as List? ?? [];
-    List<String> currentClasses = classesList.map((i) => i.toString()).toList();
+    List<String> currentClasses = classesList.map((i) {
+      if (i is Map && i.containsKey('name')) return i['name'].toString();
+      return i.toString();
+    }).toList();
 
     var detailedGradesList = json['detailed_grades'] as List? ?? [];
     List<DetailedGrade> detailedGrades = detailedGradesList.map((i) => DetailedGrade.fromJson(i)).toList();

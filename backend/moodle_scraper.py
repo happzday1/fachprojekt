@@ -141,19 +141,23 @@ class MoodleScraper:
             
         try:
             # 1. Try to set filter to 'All' to see all future deadlines
+            # We use a longer wait for the timeline block specifically in containers
             try:
+                self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-region='timeline'], .block_timeline, #instance-xml-declaration-timeline")))
+                
                 filter_btn = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[id^='timeline-day-filter']")))
                 filter_btn.click()
                 all_filter = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "[data-filtername='all']")))
                 all_filter.click()
-                time.sleep(1) # Short wait for JS to refresh
+                time.sleep(2) # Content refresh wait
                 logger.info("Set timeline filter to 'All'")
             except Exception as e:
-                logger.debug(f"Could not set timeline filter: {e}")
+                logger.debug(f"Could not set timeline filter (maybe already set or different layout): {e}")
 
-            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-region='timeline']")))
+            # Final check for timeline region
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-region='timeline'], .block_timeline")))
         except:
-            logger.warning("Timeline region not found")
+            logger.warning("Timeline region not found after wait. Proceeding with full page scan.")
 
         deadlines = []
         seen_urls = set()

@@ -66,10 +66,16 @@ class ApiService {
                  // Deadlines are already included in loginResult from the login process
                  // Merge deadlines from login into grades data
                  final sessionData = gradesResult['data'] as Map<String, dynamic>;
-                 if (loginResult['data'] != null && loginResult['data']['moodle_deadlines'] != null) {
-                   sessionData['moodle_deadlines'] = loginResult['data']['moodle_deadlines'];
-                   print("Merged ${(loginResult['data']['moodle_deadlines'] as List).length} deadlines from login");
-                 }
+                  if (loginResult['data'] != null) {
+                    if (loginResult['data']['moodle_deadlines'] != null) {
+                      sessionData['moodle_deadlines'] = loginResult['data']['moodle_deadlines'];
+                      print("Merged ${(loginResult['data']['moodle_deadlines'] as List).length} deadlines from login");
+                    }
+                    if (loginResult['data']['current_classes'] != null) {
+                      sessionData['current_classes'] = loginResult['data']['current_classes'];
+                      print("Merged ${(loginResult['data']['current_classes'] as List).length} classes from login");
+                    }
+                  }
                  
                  return SessionData.fromJson(sessionData);
               } else {

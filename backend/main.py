@@ -16,6 +16,7 @@ from sse_starlette.sse import EventSourceResponse
 # Scrapers & Tools
 from boss_scraper import BossScraper
 from moodle_scraper import MoodleScraper
+from lsf_scraper import LsfScraper
 from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -251,20 +252,30 @@ async def login(creds: Credentials):
     
     # Combined Logic: Single browser session for verification and scraping
     moodle_deadlines = []
+    current_classes = []
     try:
-        logger.info("Verifying credentials and fetching Moodle deadlines...")
-        scraper = MoodleScraper(creds.username, creds.password)
-        # Using the scraper's get_deadlines which handles setup, login, and extraction
-        result = scraper.get_deadlines(close_driver=True)
+        logger.info("Verifying credentials and fetching initial data...")
         
-        if result.get("success"):
-            moodle_deadlines = result.get("deadlines", [])
-            logger.info(f"Successfully verified and fetched {len(moodle_deadlines)} deadlines.")
+        # 1. Fetch Deadlines (Moodle)
+        moodle_scraper = MoodleScraper(creds.username, creds.password)
+        m_result = moodle_scraper.get_deadlines(close_driver=True)
+        
+        if m_result.get("success"):
+            moodle_deadlines = m_result.get("deadlines", [])
         else:
-            error_status = result.get("error", "error")
+            error_status = m_result.get("error", "error")
             if "Authentication failed" in error_status or "Login failed" in error_status:
                  return {"success": False, "error": "invalid_credentials"}
-            return {"success": False, "error": error_status}
+            logger.warning(f"Moodle fetch failed but continuing: {error_status}")
+
+        # 2. Fetch Current Classes (LSF)
+        # Note: We create a new scraper for LSF to ensure clean navigation, 
+        # though ideally we could reuse the driver if needed for extreme speed.
+        lsf_scraper = LsfScraper(creds.username, creds.password, creds.totp_secret)
+        l_result = lsf_scraper.get_current_classes()
+        if l_result.get("success"):
+            current_classes = l_result.get("current_classes", [])
+            logger.info(f"Fetched {len(current_classes)} current classes from LSF.")
             
     except Exception as e:
         logger.error(f"Login/Fetch error: {e}")
@@ -281,7 +292,7 @@ async def login(creds: Credentials):
             },
             "moodle_deadlines": moodle_deadlines,
             "exam_requirements": [],
-            "current_classes": [],
+            "current_classes": current_classes,
             "detailed_grades": []
         }
     }
@@ -386,7 +397,8 @@ async def fetch_grades(creds: Credentials):
                     ]
                 }
             ],
-            "moodle_deadlines": []  # Moodle deadlines are merged in login endpoint
+            "moodle_deadlines": [],  # Moodle deadlines are merged in login endpoint
+            "current_classes": []    # LSF classes are merged in login endpoint
         }
     }
     user_grades_cache[key] = response
