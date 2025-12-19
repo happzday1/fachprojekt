@@ -8,11 +8,11 @@ class ApiService {
   // Determine Base URL
   static String get baseUrl {
     if (kIsWeb) {
-      return "http://127.0.0.1:8001";
+      return "http://127.0.0.1:8000";
     } else if (Platform.isAndroid) {
-      return "http://10.0.2.2:8001";
+      return "http://10.0.2.2:8000";
     } else {
-      return "http://127.0.0.1:8001"; // iOS / Desktop
+      return "http://127.0.0.1:8000"; // iOS / Desktop
     }
   }
 
@@ -66,6 +66,7 @@ class ApiService {
                  // Deadlines are already included in loginResult from the login process
                  // Merge deadlines from login into grades data
                  final sessionData = gradesResult['data'] as Map<String, dynamic>;
+                 sessionData['username'] = username; // Ensure stable username is passed
                   if (loginResult['data'] != null) {
                     if (loginResult['data']['moodle_deadlines'] != null) {
                       sessionData['moodle_deadlines'] = loginResult['data']['moodle_deadlines'];
@@ -81,7 +82,9 @@ class ApiService {
               } else {
                  print("BOSS fetch failed: ${gradesResult['error']}");
                  // Fallback to basic login data
-                 return SessionData.fromJson(loginResult['data']);
+                 final sessionData = loginResult['data'] as Map<String, dynamic>;
+                 sessionData['username'] = username;
+                 return SessionData.fromJson(sessionData);
               }
             }
           } catch (e) {
@@ -89,7 +92,9 @@ class ApiService {
             // Fallback to basic login data
           }
           
-          return SessionData.fromJson(loginResult['data']);
+          final sessionData = loginResult['data'] as Map<String, dynamic>;
+          sessionData['username'] = username;
+          return SessionData.fromJson(sessionData);
         } else {
           // Extract error message from response
           final errorMsg = loginResult['error'] ?? "Login failed. Please check your credentials.";

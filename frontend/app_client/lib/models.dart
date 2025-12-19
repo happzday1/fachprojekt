@@ -159,6 +159,7 @@ class DetailedGrade {
 
 class SessionData {
   final String profileName;
+  final String username; // Added for stable identification
   final ECTSData ectsData;
   final List<Deadline> moodleDeadlines;
   final List<ExamCategory> examRequirements;
@@ -167,6 +168,7 @@ class SessionData {
 
   SessionData({
     required this.profileName,
+    required this.username,
     required this.ectsData,
     required this.moodleDeadlines,
     required this.examRequirements,
@@ -192,6 +194,7 @@ class SessionData {
 
     return SessionData(
       profileName: json['profile_name'] ?? 'Student',
+      username: json['username'] ?? '',
       ectsData: ECTSData.fromJson(json['ects_data'] ?? {}),
       moodleDeadlines: deadlines,
       examRequirements: examRequirements,
@@ -203,6 +206,7 @@ class SessionData {
   Map<String, dynamic> toJson() {
     return {
       'profile_name': profileName,
+      'username': username,
       'ects_data': {
         'total_ects': ectsData.totalEcts,
         'courses_count': ectsData.coursesCount,

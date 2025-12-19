@@ -4,6 +4,14 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models.dart';
 import '../workspace_service.dart';
+import '../audio_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// Use conditional import for IoHelper
+import '../io_helper.dart' if (dart.library.html) '../io_helper_web.dart';
 
 class ChatMessage {
   final String text;
@@ -125,6 +133,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   bool _isMinimized = false;
+  bool _isRecording = false;
   late AnimationController _animController;
   late Animation<double> _scaleAnim;
 
@@ -190,6 +199,86 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
         _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
       }
     });
+  }
+
+  Future<void> _toggleRecording() async {
+    try {
+      if (_isRecording) {
+        final path = await AudioService.stopRecording();
+        setState(() => _isRecording = false);
+        if (path != null) {
+          await _sendAudioMessage(path);
+        }
+      } else {
+        await AudioService.startRecording();
+        setState(() => _isRecording = true);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Recording error: $e")));
+      setState(() => _isRecording = false);
+    }
+  }
+
+  Future<void> _sendAudioMessage(String path) async {
+    setState(() {
+      _messages.add(ChatMessage(text: "🎤 Voice Prompt", isUser: true));
+      _isLoading = true;
+    });
+    _scrollToBottom();
+
+    try {
+      final List<int> bytes;
+      if (kIsWeb) {
+        // On web, path is a blob URL. We need to fetch the bytes.
+        final response = await http.get(Uri.parse(path));
+        bytes = response.bodyBytes;
+      } else {
+        bytes = await IoHelper.readAsBytes(path);
+      }
+      
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${WorkspaceService.baseUrl}/chat/audio'),
+      );
+      
+      final userId = widget.session.profileName.toLowerCase().replaceAll(' ', '_');
+      request.fields['user_id'] = userId;
+      
+      // Determine file extension and MIME type based on platform
+      final String fileName = kIsWeb ? 'voice_prompt.ogg' : 'voice_prompt.m4a';
+      final String mimeType = kIsWeb ? 'audio/ogg' : 'audio/mp4';
+      
+      request.files.add(http.MultipartFile.fromBytes(
+        'audio_file',
+        bytes,
+        filename: fileName,
+        contentType: MediaType.parse(mimeType),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _messages.add(ChatMessage(text: data['answer'] ?? "No response received.", isUser: false));
+            _isLoading = false;
+          });
+          _scrollToBottom();
+        }
+      } else {
+        throw Exception("Server returned ${response.statusCode}");
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(ChatMessage(text: "Audio chat failed: ${e.toString()}", isUser: false));
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    }
   }
 
   @override
@@ -267,7 +356,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: isDark ? Colors.black.withOpacity(0.3) : Colors.grey.shade50, border: Border(top: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200))),
             child: Row(children: [
-              Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : Colors.black87), decoration: InputDecoration(hintText: "Ask anything...", hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 14), filled: true, fillColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true), onSubmitted: (_) => _sendMessage())),
+              Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : Colors.black87), decoration: InputDecoration(hintText: _isRecording ? "Listening..." : "Ask anything...", hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 14), filled: true, fillColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true, suffixIcon: IconButton(icon: _isRecording ? const _PulseMicIcon() : const Icon(Icons.mic_rounded, color: Color(0xFF38B6FF)), onPressed: _toggleRecording)), onSubmitted: (_) => _sendMessage())),
               const SizedBox(width: 8),
               IconButton(icon: const Icon(Icons.send_rounded, color: Color(0xFF38B6FF)), onPressed: _sendMessage),
             ]),
@@ -384,10 +473,47 @@ class _AnimatedStatusText extends StatefulWidget {
 
 class _AnimatedStatusTextState extends State<_AnimatedStatusText> {
   int _currentIndex = 0;
-  final List<String> _statusMessages = ["Thinking...", "Analyzing your data...", "Checking TU Dortmund...", "Almost there..."];
+  final List<String> _statusMessages = [
+    "Thinking...", 
+    "Analyzing your prompt...", 
+    "Checking materials...", 
+    "Synthesizing response...",
+    "Listening to your voice...", 
+    "Processing audio..."
+  ];
   @override
   void initState() { super.initState(); _startCycling(); }
   void _startCycling() { Future.delayed(const Duration(seconds: 2), () { if (mounted) { setState(() { _currentIndex = (_currentIndex + 1) % _statusMessages.length; }); _startCycling(); } }); }
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(duration: const Duration(milliseconds: 300), child: Text(_statusMessages[_currentIndex], key: ValueKey<int>(_currentIndex), style: GoogleFonts.inter(fontSize: 11, color: widget.isDark ? Colors.white38 : Colors.grey.shade600, fontStyle: FontStyle.italic)));
+}
+
+class _PulseMicIcon extends StatefulWidget {
+  const _PulseMicIcon();
+  @override
+  State<_PulseMicIcon> createState() => _PulseMicIconState();
+}
+
+class _PulseMicIconState extends State<_PulseMicIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
+        ),
+        child: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent),
+      ),
+    );
+  }
 }

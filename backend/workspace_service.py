@@ -72,7 +72,7 @@ class WorkspaceService:
         
         # Query workspace_files for this workspace to get file paths
         files_response = self.supabase.table("workspace_files") \
-            .select("id, storage_path, gemini_uri, file_name") \
+            .select("id, storage_path, gemini_file_uri, file_name") \
             .eq("workspace_id", workspace_id) \
             .execute()
         
@@ -81,58 +81,87 @@ class WorkspaceService:
             logger.info(f"No files in workspace {workspace_id}. Returning empty context.")
             return None, []
 
-        valid_uris = []
+        valid_files = []
         
-        # Check gemini_uris and upload if missing
+        # Check gemini_file_uris and upload if missing or expired
         for file_record in workspace_files:
-            uri = file_record.get("gemini_uri")
-            if not uri:
+            resource_name = file_record.get("gemini_file_uri")
+            g_file = None
+            
+            # Validate file is still active on Gemini
+            if resource_name:
+                try:
+                    g_file = await self.gemini_client.aio.files.get(name=resource_name)
+                    if g_file.state.name != "ACTIVE":
+                        logger.info(f"File {resource_name} is not active (state: {g_file.state.name}). Re-uploading...")
+                        g_file = None
+                except Exception as e:
+                    logger.warning(f"File {resource_name} no longer exists or inaccessible on Gemini: {e}. Re-uploading...")
+                    g_file = None
+            
+            if not g_file:
                 # Upload to Gemini Files API
-                uri = await self._upload_to_gemini(file_record)
+                new_resource_name = await self._upload_to_gemini(file_record)
+                # Note: _upload_to_gemini returns uri currently, but we need resource name for persistence
+                # and g_file object for immediate use. 
+                # Let's fetch the object for the new one to be sure we have BOTH name and uri
+                try:
+                    # In google-genai, the object returned by upload has .name and .uri
+                    # If my helper returns uri, I might need to clarify what it returns.
+                    # Looking at my helper below, it returns uploaded_file.uri (URI string).
+                    # But we need the resource name (e.g. files/...) for storage.
+                    pass
+                except:
+                    pass
                 
-                # Update DB with new URI
-                self.supabase.table("workspace_files") \
-                    .update({"gemini_uri": uri, "upload_status": "uploaded"}) \
+                # Re-fetch or re-upload to get full object
+                # Update: My helper returns a string. Let's make it more robust.
+                # Actually, I'll modify _upload_to_gemini to return the resource name.
+                # Since I am refactoring, I will fix the helper too.
+                # For now, assume it returns the name 'files/...'
+                pass
+
+            # I will refactor the upload helper too to be clearer.
+            # But here let's finish the loop logic.
+            # I will perform the re-upload and re-fetch to get the full object.
+            if not g_file:
+                 resource_name = await self._upload_to_gemini(file_record) # Refactored to return name
+                 g_file = await self.gemini_client.aio.files.get(name=resource_name)
+                 
+                 # Update DB with new Resource Name
+                 self.supabase.table("workspace_files") \
+                    .update({"gemini_file_uri": resource_name, "upload_status": "uploaded"}) \
                     .eq("id", file_record["id"]) \
                     .execute()
-            
-            valid_uris.append(uri)
 
-        if not valid_uris:
+            valid_files.append(g_file)
+
+        if not valid_files:
              return None, []
 
-        # Prepare files info for fallback
+        # Prepare files info or cache contents
         files_info = []
         cached_contents = []
         
-        for file_record in workspace_files:
-            uri = file_record.get("gemini_uri")
-            if not uri: continue # Should be handled by upload block above
+        for g_file in valid_files:
+            fname = g_file.display_name or "doc.pdf"
+            mime_type = g_file.mime_type or "application/pdf"
             
-            fname = file_record.get("file_name", "doc.pdf")
-            mime_type = "application/pdf"
-            if fname.lower().endswith(".txt"):
-                mime_type = "text/plain"
-            elif fname.lower().endswith(".jpg") or fname.lower().endswith(".jpeg"):
-                mime_type = "image/jpeg"
-            elif fname.lower().endswith(".png"):
-                mime_type = "image/png"
-            
-            files_info.append({"uri": uri, "mime_type": mime_type})
+            # files_info needs full URI for fallback prompt
+            files_info.append({"uri": g_file.uri, "mime_type": mime_type})
             
             cached_contents.append(
                 types.Content(
                     role="user",
                     parts=[
                         types.Part(
-                            file_data=types.FileData(file_uri=uri, mime_type=mime_type)
+                            file_data=types.FileData(file_uri=g_file.uri, mime_type=mime_type)
                         )
                     ]
                 )
             )
 
         # Create cache
-        
         try:
             cache = await self.gemini_client.aio.caches.create(
                 model=MODEL_NAME,
@@ -156,14 +185,17 @@ class WorkspaceService:
             return cache.name, files_info
             
         except Exception as e:
-            # Check if it's a 400 (too small) or other non-fatal error
-            logger.warning(f"Gemini Caching failed (proceeding with fallback): {e}")
+            error_msg = str(e)
+            if "too small" in error_msg.lower() or "min_total_token_count" in error_msg:
+                logger.info(f"Workspace too small for cache. Proceeding with fallback files.")
+            else:
+                logger.warning(f"Gemini Caching failed (proceeding with fallback): {e}")
             return None, files_info
 
     async def _upload_to_gemini(self, file_record: dict) -> str:
         """
         Downloads file from Supabase Storage and uploads to Gemini Files API.
-        Returns the Gemini URI.
+        Returns the Gemini resource name (e.g., "files/...")
         """
         # 1. Download from Supabase Storage
         path = file_record["storage_path"]
@@ -206,7 +238,19 @@ class WorkspaceService:
                 file=tmp_path,
                 config=types.UploadFileConfig(display_name=file_record["file_name"]) 
             )
-            return uploaded_file.uri
+            
+            # Poll for ACTIVE state
+            logger.info(f"File {uploaded_file.name} uploaded. Waiting for ACTIVE state...")
+            g_file = uploaded_file
+            while g_file.state.name == "PROCESSING":
+                await asyncio.sleep(1)
+                g_file = await self.gemini_client.aio.files.get(name=uploaded_file.name)
+            
+            if g_file.state.name != "ACTIVE":
+                logger.error(f"File {uploaded_file.name} failed to process: {g_file.state.name}")
+                raise RuntimeError(f"Gemini file processing failed: {g_file.state.name}")
+                
+            return g_file.name
         finally:
             if os.path.exists(tmp_path):
                 os.remove(tmp_path)

@@ -14,6 +14,7 @@ class SessionService {
       final prefs = await SharedPreferences.getInstance();
       final sessionJson = jsonEncode({
         'profile_name': session.profileName,
+        'username': session.username,
         'ects_data': {
           'total_ects': session.ectsData.totalEcts,
           'courses_count': session.ectsData.coursesCount,
@@ -91,6 +92,7 @@ class SessionService {
 
       return SessionData(
         profileName: decoded['profile_name'] ?? 'Student',
+        username: decoded['username'] ?? '',
         ectsData: ECTSData.fromJson(decoded['ects_data'] ?? {}),
         moodleDeadlines: deadlines,
         examRequirements: examRequirements,

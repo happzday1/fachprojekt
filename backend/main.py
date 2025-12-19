@@ -37,6 +37,9 @@ from google.genai import errors as genai_errors
 
 # Workspace API router
 from workspace_api import router as workspace_router
+from app.routers import stream_chat, webhooks, audio_chat
+from app.auth import supabase_auth
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -140,6 +143,10 @@ app.add_middleware(
 
 # Include Workspace Router
 app.include_router(workspace_router)
+app.include_router(stream_chat.router)
+app.include_router(webhooks.router)
+app.include_router(audio_chat.router)
+
 
 # ============================================
 # MODELS
@@ -474,4 +481,4 @@ async def fetch_grades(creds: Credentials):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io' if (dart.library.html) 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +6,13 @@ import 'package:file_picker/file_picker.dart';
 import '../models.dart';
 import '../workspace_service.dart';
 import '../widgets/glass_container.dart';
+import '../audio_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'dart:convert';
+
+// Use conditional import for IoHelper
+import '../io_helper.dart' if (dart.library.html) '../io_helper_web.dart';
 
 class WorkspacePage extends StatefulWidget {
   final SessionData session;
@@ -26,8 +33,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
   List<Map<String, dynamic>> _chatMessages = [];
   List<Map<String, dynamic>> _files = [];
   bool _isChatLoading = false;
+  bool _isRecording = false;
   
-  String get _studentId => widget.session.profileName.toLowerCase().replaceAll(' ', '_');
+  String get _studentId => widget.session.username.toLowerCase().replaceAll(' ', '_');
 
   @override
   void initState() {
@@ -115,6 +123,86 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
   }
 
+  Future<void> _toggleRecording() async {
+    try {
+      if (_isRecording) {
+        final path = await AudioService.stopRecording();
+        setState(() => _isRecording = false);
+        if (path != null) {
+          await _sendAudioMessage(path);
+        }
+      } else {
+        await AudioService.startRecording();
+        setState(() => _isRecording = true);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Recording error: $e")));
+      setState(() => _isRecording = false);
+    }
+  }
+
+  Future<void> _sendAudioMessage(String path) async {
+    if (_selectedWorkspace == null) return;
+    setState(() {
+      _chatMessages.add({'role': 'user', 'message': '🎤 Voice Prompt'});
+      _isChatLoading = true;
+    });
+
+    try {
+      final List<int> bytes;
+      if (kIsWeb) {
+        // On web, path is a blob URL. We need to fetch the bytes.
+        final response = await http.get(Uri.parse(path));
+        bytes = response.bodyBytes;
+      } else {
+        bytes = await IoHelper.readAsBytes(path);
+      }
+      
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${WorkspaceService.baseUrl}/chat/audio'),
+      );
+      
+      request.fields['user_id'] = _studentId;
+      request.fields['workspace_id'] = _selectedWorkspace!['id'];
+      
+      // Determine file extension and MIME type based on platform
+      final String fileName = kIsWeb ? 'voice_prompt.ogg' : 'voice_prompt.m4a';
+      final String mimeType = kIsWeb ? 'audio/ogg' : 'audio/mp4';
+      
+      request.files.add(http.MultipartFile.fromBytes(
+        'audio_file',
+        bytes,
+        filename: fileName,
+        contentType: MediaType.parse(mimeType),
+      ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _isChatLoading = false;
+            if (data['answer'] != null) {
+              _chatMessages.add({'role': 'model', 'message': data['answer']});
+            }
+          });
+        }
+      } else {
+        throw Exception("Server returned ${response.statusCode}");
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isChatLoading = false;
+          _chatMessages.add({'role': 'model', 'message': "Audio chat failed: ${e.toString()}"});
+        });
+      }
+    }
+  }
+
   Future<void> _uploadFile() async {
     if (_selectedWorkspace == null) return;
     try {
@@ -122,7 +210,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       if (result != null) {
         final platformFile = result.files.single;
         List<int>? fileBytes = platformFile.bytes;
-        if (!kIsWeb && fileBytes == null && platformFile.path != null) { fileBytes = File(platformFile.path!).readAsBytesSync(); }
+        if (!kIsWeb && fileBytes == null && platformFile.path != null) { fileBytes = IoHelper.readFileSync(platformFile.path!); }
         if (fileBytes != null) {
           final success = await WorkspaceService.uploadFile(_selectedWorkspace!['id'], fileBytes, platformFile.name, _studentId);
           if (success) {
@@ -506,10 +594,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
               controller: _chatController,
               style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black, fontSize: 14),
               decoration: InputDecoration(
-                hintText: "Collaborate with Ayla...",
+                hintText: _isRecording ? "Listening..." : "Collaborate with Ayla...",
                 hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                suffixIcon: IconButton(
+                  icon: _isRecording ? const _PulseMicIcon() : Icon(Icons.mic_rounded, color: isDark ? Colors.white38 : Colors.black38),
+                  onPressed: _toggleRecording,
+                ),
               ),
               onSubmitted: (_) => _sendChatMessage(),
             ),
@@ -574,7 +666,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
           ),
           const SizedBox(width: 12),
           Text(
-            "Ayla is thinking...", 
+            _isRecording ? "Listening to your voice..." : "Ayla is thinking...", 
             style: GoogleFonts.inter(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic)
           ),
         ],
@@ -675,6 +767,36 @@ class _WorkspaceCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PulseMicIcon extends StatefulWidget {
+  const _PulseMicIcon();
+  @override
+  State<_PulseMicIcon> createState() => _PulseMicIconState();
+}
+
+class _PulseMicIconState extends State<_PulseMicIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
+        ),
+        child: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent, size: 20),
       ),
     );
   }

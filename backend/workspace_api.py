@@ -408,3 +408,29 @@ async def upload_file(
     except Exception as e:
         logger.error(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/files/{file_id}")
+async def delete_file(file_id: str):
+    """Delete a file from DB and Storage."""
+    try:
+        # 1. Get file details to know the storage path
+        response = supabase.table("workspace_files").select("storage_path").eq("id", file_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        storage_path = response.data[0]["storage_path"]
+        
+        # 2. Delete from Storage
+        try:
+            supabase.storage.from_("workspace_files").remove([storage_path])
+        except Exception as e:
+            logger.warning(f"Failed to delete from storage: {e}")
+            # Continue deletion from DB even if storage fails (e.g. file already gone)
+
+        # 3. Delete from DB
+        supabase.table("workspace_files").delete().eq("id", file_id).execute()
+        
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Delete file error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
