@@ -8,6 +8,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import threading
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -35,9 +38,6 @@ from google.genai import errors as genai_errors
 # Workspace API router
 from workspace_api import router as workspace_router
 
-# Load env vars
-from dotenv import load_dotenv
-load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -157,6 +157,11 @@ class ChatRequest(BaseModel):
     student_context: Optional[dict] = None
     max_tokens: Optional[int] = 4096
 
+class AskAylaRequest(BaseModel):
+    question: str
+    student_context: Optional[dict] = None
+    student_id: Optional[str] = None
+
 # ============================================
 # DEPENDENCIES
 # ============================================
@@ -169,6 +174,69 @@ def get_client(app_instance: FastAPI = Depends(lambda: app)) -> genai.Client:
 # ============================================
 # GENERAL CHAT ENDPOINTS (Merged from gemini_api.py)
 # ============================================
+
+@app.post("/ask_ayla")
+async def ask_ayla(
+    request: AskAylaRequest,
+    client: genai.Client = Depends(get_client)
+):
+    """
+    Unified Ayla AI endpoint for the floating widget and specialty tasks.
+    """
+    try:
+        user_id = request.student_id or "anonymous"
+        messages = []
+        
+        # Add Student Context (Deadlines, Grades, etc.)
+        if request.student_context:
+            ctx = request.student_context
+            ctx_msg = "[STUDENT ACADEMIC CONTEXT]\n"
+            if ctx.get('profile_name'): ctx_msg += f"- Name: {ctx['profile_name']}\n"
+            if ctx.get('ects_data'):
+                ects = ctx['ects_data']
+                ctx_msg += f"- ECTS: {ects.get('total_ects')}/180\n"
+                ctx_msg += f"- Avg Grade: {ects.get('average_grade')}\n"
+            
+            if ctx.get('moodle_deadlines'):
+                ctx_msg += "- Upcoming Deadlines:\n"
+                for d in ctx['moodle_deadlines'][:10]:
+                    ctx_msg += f"  * {d.get('title')} ({d.get('course')}) due {d.get('date')}\n"
+            
+            messages.append(ctx_msg)
+
+        # Add History
+        history = conversation_memory.get_history(user_id)
+        for msg in history[-5:]:
+            role = "User" if msg['role'] == 'user' else "Ayla"
+            messages.append(f"{role}: {msg['content']}")
+
+        # Current Question
+        messages.append(f"User: {request.question}")
+        full_prompt = "\n\n".join(messages)
+
+        response = await client.aio.models.generate_content(
+            model=MODEL_NAME,
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTION,
+                temperature=0.7,
+            )
+        )
+
+        answer = response.text
+        
+        # Update Memory
+        conversation_memory.add_message(user_id, "user", request.question)
+        conversation_memory.add_message(user_id, "assistant", answer)
+
+        return {
+            "success": True,
+            "answer": answer,
+            "event_added": None # Extension point for auto-adding calendar events
+        }
+    except Exception as e:
+        logger.error(f"AskAyla error: {e}")
+        return {"success": False, "error": str(e)}
 
 @app.post("/chat")
 async def chat_with_memory(

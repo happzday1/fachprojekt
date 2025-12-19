@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'dart:math' as math;
-import 'dart:ui' as ui;
 import '../api_service.dart';
 import '../session_service.dart';
 import '../models.dart';
 import '../ayla_service.dart';
 import '../widgets/glass_container.dart';
-import '../main.dart'; // To access themeNotifier
+import 'package:percent_indicator/percent_indicator.dart';
 
 class DashboardPage extends StatefulWidget {
   final SessionData session;
@@ -93,6 +91,8 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  bool _isGeneratingPlan = false;
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -170,6 +170,10 @@ class _DashboardPageState extends State<DashboardPage> {
                         // Statistics Row (Grouped)
                         _buildStatsRow(session, isDark),
                         const SizedBox(height: 24),
+
+                        // AI Study Planner Row
+                        _buildStudyPlannerCard(session, isDark),
+                        const SizedBox(height: 24),
                         
                         // Deadlines & Classes Row
                         Row(
@@ -180,7 +184,10 @@ class _DashboardPageState extends State<DashboardPage> {
                                 title: "Deadlines",
                                 icon: Icons.timer_outlined,
                                 color: Colors.redAccent,
-                                child: _UpcomingListCompact(deadlines: realDeadlines),
+                                child: _UpcomingListCompact(
+                                  deadlines: realDeadlines,
+                                  onTap: (d) => _showEventDetails(CalendarEvent.fromDeadline(d)),
+                                ),
                                 isDark: isDark,
                               ),
                             ),
@@ -261,62 +268,236 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildStatsRow(SessionData session, bool isDark) {
-    return GlassContainer(
-      padding: const EdgeInsets.all(32),
-      borderRadius: 32,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem("ECTS Progress", "${session.ectsData.totalEcts.toInt()}/180", Icons.analytics_rounded, const Color(0xFF38B6FF), isDark),
-          _buildDivider(isDark),
-          _buildStatItem("Average Grade", session.ectsData.averageGrade?.toStringAsFixed(2) ?? "–", Icons.auto_graph_rounded, Colors.orangeAccent, isDark),
-          _buildDivider(isDark),
-          _buildStatItem("Best Achievement", session.ectsData.bestGrade?.toStringAsFixed(2) ?? "–", Icons.military_tech_rounded, Colors.amber, isDark),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon, Color color, bool isDark) {
-    return Column(
+    final double ectsPercentage = (session.ectsData.totalEcts / 180.0).clamp(0.0, 1.0);
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            color: isDark ? Colors.white : const Color(0xFF1E293B),
-            letterSpacing: -1,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isDark ? Colors.white38 : Colors.black38,
-            letterSpacing: 1,
+        // ECTS Progress & General Stats
+        Expanded(
+          flex: 2,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(24),
+            borderRadius: 32,
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildCircularProgress(session.ectsData.totalEcts, 180, isDark),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _buildStatSimple("Average Grade", session.ectsData.averageGrade?.toStringAsFixed(2) ?? "–", Icons.auto_graph_rounded, Colors.orangeAccent, isDark),
+                        const SizedBox(height: 20),
+                        _buildStatSimple("Best Grade", session.ectsData.bestGrade?.toStringAsFixed(2) ?? "–", Icons.military_tech_rounded, Colors.amber, isDark),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildMiniStat("Courses", session.ectsData.coursesCount.toString(), isDark),
+                    _buildMiniStat("Degree", session.ectsData.degreeProgram ?? "CS", isDark),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDivider(bool isDark) {
-    return Container(
-      width: 1,
-      height: 60,
-      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+  Widget _buildStudyPlannerCard(SessionData session, bool isDark) {
+    return GlassContainer(
+      padding: const EdgeInsets.all(24),
+      borderRadius: 24,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.indigoAccent.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.auto_awesome_rounded, color: Colors.indigoAccent, size: 24),
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "AI Study Planner",
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+                Text(
+                  "Generate a tailored schedule based on your upcoming deadlines.",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          _isGeneratingPlan
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.indigoAccent))
+              : ElevatedButton(
+                  onPressed: _generateStudyPlan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigoAccent.withOpacity(0.1),
+                    foregroundColor: Colors.indigoAccent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: Text("Generate Plan", style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateStudyPlan() async {
+    setState(() => _isGeneratingPlan = true);
+    
+    try {
+      final prompt = "Base on my upcoming deadlines, create a detailed study plan for the next 7 days. Break it down day-by-day and prioritize tasks based on their due dates. Keep it concise but actionable.";
+      
+      final response = await AylaService.askAyla(
+        question: prompt,
+        context: _session.toJson(),
+        studentId: _session.profileName.toLowerCase().replaceAll(' ', '_'),
+      );
+      
+      if (mounted) {
+        _showAylaAnalysisBottomSheet(response.answer, "Weekly Study Plan");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error generating plan: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isGeneratingPlan = false);
+    }
+  }
+
+  void _showAylaAnalysisBottomSheet(String content, String title) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => GlassContainer(
+          borderRadius: 32,
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: Text(
+                    content,
+                    style: GoogleFonts.inter(fontSize: 14, height: 1.6),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Widget _buildCircularProgress(double total, double target, bool isDark) {
+    final double percent = (total / target).clamp(0.0, 1.0);
+    return CircularPercentIndicator(
+      radius: 50.0,
+      lineWidth: 10.0,
+      percent: percent,
+      animation: true,
+      animationDuration: 1200,
+      circularStrokeCap: CircularStrokeCap.round,
+      center: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            "${total.toInt()}",
+            style: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF1E293B),
+            ),
+          ),
+          Text(
+            "ECTS",
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white38 : Colors.black38,
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+      progressColor: const Color(0xFF38B6FF),
+    );
+  }
+
+  Widget _buildStatSimple(String label, String value, IconData icon, Color color, bool isDark) {
+    return Row(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(value, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF1E293B))),
+            Text(label, style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+          child: Icon(icon, color: color, size: 16),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, bool isDark) {
+    return Column(
+      children: [
+        Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : Colors.black87)),
+        Text(label, style: GoogleFonts.inter(fontSize: 9, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w600, letterSpacing: 1)),
+      ],
     );
   }
 
@@ -351,44 +532,137 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildEventItem(CalendarEvent event, bool isDark) {
     final eventColor = Colors.primaries[event.title.hashCode % Colors.primaries.length];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 3,
-            height: 24,
-            decoration: BoxDecoration(color: eventColor, borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(event.title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
-                const SizedBox(height: 2),
-                Text(
-                  "${DateFormat('HH:mm').format(event.date)} ${event.course ?? ''}", 
-                  style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38)
-                ),
-              ],
+    return InkWell(
+      onTap: () => _showEventDetails(event),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 24,
+              decoration: BoxDecoration(color: eventColor, borderRadius: BorderRadius.circular(2)),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(event.title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${DateFormat('HH:mm').format(event.date)} ${event.course ?? ''}", 
+                    style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38)
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 16, color: isDark ? Colors.white12 : Colors.black12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEventDetails(CalendarEvent event) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1A1A2E) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (event.platform == 'Ayla' ? Colors.redAccent : const Color(0xFF38B6FF)).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                event.platform == 'Ayla' ? Icons.assignment_rounded : Icons.calendar_today_rounded,
+                color: event.platform == 'Ayla' ? Colors.redAccent : const Color(0xFF38B6FF),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                event.title,
+                style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow(Icons.book_outlined, "Course", event.course ?? "General", isDark),
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.access_time_rounded, "Due Date", DateFormat('EEEE, d MMMM yyyy, HH:mm').format(event.date), isDark),
+            if (event.link != null && event.link!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildDetailRow(Icons.link_rounded, "Platform", event.platform, isDark),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Close", style: GoogleFonts.inter(color: Colors.grey)),
           ),
+          if (event.link != null && event.link!.isNotEmpty)
+            ElevatedButton(
+              onPressed: () {
+                // In a real app we'd use url_launcher
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Opening platform link...")));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF38B6FF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text("Open in ${event.platform}", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value, bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              const SizedBox(height: 2),
+              Text(value, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _UpcomingListCompact extends StatelessWidget {
   final List<Deadline> deadlines;
-  const _UpcomingListCompact({required this.deadlines});
+  final Function(Deadline)? onTap;
+  const _UpcomingListCompact({required this.deadlines, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -408,44 +682,50 @@ class _UpcomingListCompact extends StatelessWidget {
           Color urgencyColor = daysUntil <= 1 ? Colors.redAccent : (daysUntil <= 3 ? Colors.orangeAccent : Colors.tealAccent);
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+            child: InkWell(
+              onTap: () => onTap?.call(deadline),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        deadline.title, 
-                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        deadline.course, 
-                        style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Text(
-                    daysUntil == 0 ? "Today" : (daysUntil == 1 ? "Tomorrow" : "$daysUntil days"), 
-                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: urgencyColor)
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            deadline.title, 
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            deadline.course, 
+                            style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                      child: Text(
+                        daysUntil == 0 ? "Today" : (daysUntil == 1 ? "Tomorrow" : "$daysUntil days"), 
+                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: urgencyColor)
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         } catch (e) { return const SizedBox.shrink(); }

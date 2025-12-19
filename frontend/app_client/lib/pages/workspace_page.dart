@@ -159,7 +159,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
     if (confirm == true) { await WorkspaceService.deleteWorkspace(workspaceId); _loadWorkspaces(); }
   }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -429,7 +428,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
-  Widget _buildPaneHeaderWithAction(IconData icon, String title, Color color, IconData actionIcon, VoidCallback onAction, bool isDark) {
+  Widget _buildPaneHeaderWithAction(IconData icon, String title, Color color, IconData actionIcon, VoidCallback onAction, bool isDark, {String? tooltip}) {
     return Container(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -447,6 +446,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
           ),
           const Spacer(),
           IconButton(
+            tooltip: tooltip,
             icon: Icon(actionIcon, size: 18, color: isDark ? Colors.white38 : Colors.black38),
             onPressed: onAction,
             padding: EdgeInsets.zero,
@@ -679,3 +679,4 @@ class _WorkspaceCard extends StatelessWidget {
     );
   }
 }
+
