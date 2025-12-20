@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,7 +58,7 @@ class CustomEventService {
       final List<dynamic> decoded = jsonDecode(eventsJson);
       return decoded.map((json) => CustomEvent.fromJson(json)).toList();
     } catch (e) {
-      print('Error loading custom events: $e');
+      debugPrint('Error loading custom events: $e');
       return [];
     }
   }
@@ -71,7 +72,7 @@ class CustomEventService {
       );
       return await prefs.setString(_storageKey, eventsJson);
     } catch (e) {
-      print('Error saving custom events: $e');
+      debugPrint('Error saving custom events: $e');
       return false;
     }
   }

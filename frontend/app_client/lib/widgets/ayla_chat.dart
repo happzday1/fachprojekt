@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models.dart';
-import '../workspace_service.dart';
-import '../audio_service.dart';
+import '../models/models.dart';
+import '../services/workspace_service.dart';
+import '../services/audio_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 // Use conditional import for IoHelper
-import '../io_helper.dart' if (dart.library.html) '../io_helper_web.dart';
+import '../utils/io_helper.dart' if (dart.library.html) '../utils/io_helper_web.dart';
 
 class ChatMessage {
   final String text;
@@ -63,11 +63,11 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
           width: 56, height: 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-            border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1), width: 1.5),
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF38B6FF).withOpacity(isDark ? 0.2 : 0.1),
+                color: const Color(0xFF38B6FF).withValues(alpha: isDark ? 0.2 : 0.1),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -77,7 +77,7 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
             borderRadius: BorderRadius.circular(28),
             child: BackdropFilter(
               filter: ColorFilter.mode(
-                const Color(0xFF38B6FF).withOpacity(0.05),
+                const Color(0xFF38B6FF).withValues(alpha: 0.05),
                 BlendMode.srcOver,
               ),
               child: Stack(
@@ -85,7 +85,7 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
                 children: [
                    Icon(
                     Icons.auto_awesome_rounded, 
-                    color: isDark ? Colors.white.withOpacity(0.9) : const Color(0xFF1E293B),
+                    color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
                     size: 24,
                   ),
                   Positioned(
@@ -98,7 +98,7 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF38B6FF).withOpacity(0.5),
+                            color: const Color(0xFF38B6FF).withValues(alpha: 0.5),
                             blurRadius: 4,
                             spreadRadius: 1,
                           )
@@ -175,11 +175,16 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
     _scrollToBottom();
     try {
       final contextMap = _buildStudentContext();
-      final userId = widget.session.profileName.toLowerCase().replaceAll(' ', '_');
+      final userId = widget.session.userId ?? widget.session.username;
       final response = await WorkspaceService.sendGeminiChat(text, userId: userId, studentContext: {
         'name': widget.session.profileName,
         'ects': contextMap['total_ects'],
         'degree': contextMap['degree_program'],
+        'moodle_deadlines': widget.session.moodleDeadlines.map((d) => {
+          'title': d.title,
+          'course': d.course,
+          'date': d.date
+        }).toList(),
       });
       if (mounted) {
         setState(() { _messages.add(ChatMessage(text: response ?? "No response received.", isUser: false)); _isLoading = false; });
@@ -214,7 +219,9 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
         setState(() => _isRecording = true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Recording error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Recording error: $e")));
+      }
       setState(() => _isRecording = false);
     }
   }
@@ -241,7 +248,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
         Uri.parse('${WorkspaceService.baseUrl}/chat/audio'),
       );
       
-      final userId = widget.session.profileName.toLowerCase().replaceAll(' ', '_');
+      final userId = widget.session.userId ?? widget.session.username;
       request.fields['user_id'] = userId;
       
       // Determine file extension and MIME type based on platform
@@ -297,7 +304,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           duration: const Duration(milliseconds: 200),
           width: _isMinimized ? 56 : chatWidth,
           height: _isMinimized ? 56 : 550,
-          decoration: BoxDecoration(color: isDark ? const Color(0xFF1a1a1a) : Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: isDark ? const Color(0xFF3A7BD5).withOpacity(0.3) : Colors.grey.shade300, width: 1.5)),
+          decoration: BoxDecoration(color: isDark ? const Color(0xFF1a1a1a) : Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: isDark ? const Color(0xFF3A7BD5).withValues(alpha: 0.3) : Colors.grey.shade300, width: 1.5)),
           child: _isMinimized ? _buildMinimizedView() : _buildExpandedView(isDark),
         ),
       ),
@@ -311,13 +318,13 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
       borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(24),
         ), 
         child: Center(
           child: Icon(
             Icons.auto_awesome_rounded, 
-            color: isDark ? Colors.white.withOpacity(0.8) : const Color(0xFF1E293B), 
+            color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF1E293B), 
             size: 24
           )
         )
@@ -333,14 +340,14 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.03) : const Color(0xFF1E293B).withOpacity(0.03),
-              border: Border(bottom: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))),
+              color: isDark ? Colors.white.withValues(alpha: 0.03) : const Color(0xFF1E293B).withValues(alpha: 0.03),
+              border: Border(bottom: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))),
             ),
             child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(8), 
                 decoration: BoxDecoration(
-                  color: const Color(0xFF38B6FF).withOpacity(0.1), 
+                  color: const Color(0xFF38B6FF).withValues(alpha: 0.1), 
                   borderRadius: BorderRadius.circular(12)
                 ), 
                 child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 18)
@@ -354,9 +361,9 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           Expanded(child: ListView.builder(controller: _scrollController, padding: const EdgeInsets.all(12), itemCount: _messages.length + (_isLoading ? 1 : 0), itemBuilder: (context, index) { if (index == _messages.length && _isLoading) return _buildTypingIndicator(isDark); return _buildMessage(_messages[index], isDark); })),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: isDark ? Colors.black.withOpacity(0.3) : Colors.grey.shade50, border: Border(top: BorderSide(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200))),
+            decoration: BoxDecoration(color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.grey.shade50, border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200))),
             child: Row(children: [
-              Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : Colors.black87), decoration: InputDecoration(hintText: _isRecording ? "Listening..." : "Ask anything...", hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 14), filled: true, fillColor: isDark ? Colors.white.withOpacity(0.08) : Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true, suffixIcon: IconButton(icon: _isRecording ? const _PulseMicIcon() : const Icon(Icons.mic_rounded, color: Color(0xFF38B6FF)), onPressed: _toggleRecording)), onSubmitted: (_) => _sendMessage())),
+              Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : Colors.black87), decoration: InputDecoration(hintText: _isRecording ? "Listening..." : "Ask anything...", hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 14), filled: true, fillColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true, suffixIcon: IconButton(icon: _isRecording ? const _PulseMicIcon() : const Icon(Icons.mic_rounded, color: Color(0xFF38B6FF)), onPressed: _toggleRecording)), onSubmitted: (_) => _sendMessage())),
               const SizedBox(width: 8),
               IconButton(icon: const Icon(Icons.send_rounded, color: Color(0xFF38B6FF)), onPressed: _sendMessage),
             ]),
@@ -375,7 +382,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
             Container(
               width: 26, height: 26, 
               decoration: BoxDecoration(
-                color: const Color(0xFF38B6FF).withOpacity(0.1), 
+                color: const Color(0xFF38B6FF).withValues(alpha: 0.1), 
                 borderRadius: BorderRadius.circular(8)
               ), 
               child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 14)
@@ -387,13 +394,13 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
               decoration: BoxDecoration(
                 color: message.isUser 
-                  ? (isDark ? const Color(0xFF38B6FF).withOpacity(0.8) : const Color(0xFF38B6FF)) 
-                  : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04)), 
+                  ? (isDark ? const Color(0xFF38B6FF).withValues(alpha: 0.8) : const Color(0xFF38B6FF)) 
+                  : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)), 
                 borderRadius: BorderRadius.circular(16).copyWith(
                   bottomRight: message.isUser ? const Radius.circular(4) : null, 
                   bottomLeft: !message.isUser ? const Radius.circular(4) : null
                 ), 
-                border: Border.all(color: message.isUser ? Colors.transparent : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)))
+                border: Border.all(color: message.isUser ? Colors.transparent : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)))
               ), 
               child: message.isUser 
                 ? Text(message.text, style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: Colors.white)) 
@@ -423,7 +430,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           Container(
             width: 26, height: 26, 
             decoration: BoxDecoration(
-              color: const Color(0xFF38B6FF).withOpacity(0.1), 
+              color: const Color(0xFF38B6FF).withValues(alpha: 0.1), 
               borderRadius: BorderRadius.circular(8)
             ), 
             child: const Icon(Icons.psychology_rounded, color: Color(0xFF38B6FF), size: 14)
@@ -432,7 +439,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), 
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.04), 
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04), 
               borderRadius: BorderRadius.circular(14).copyWith(bottomLeft: const Radius.circular(4))
             ), 
             child: Column(
@@ -458,7 +465,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
       builder: (context, value, _) => Container(
         margin: EdgeInsets.only(right: index < 2 ? 4 : 0), 
         width: 6, height: 6, 
-        decoration: BoxDecoration(color: const Color(0xFF38B6FF).withOpacity(value), shape: BoxShape.circle)
+        decoration: BoxDecoration(color: const Color(0xFF38B6FF).withValues(alpha: value), shape: BoxShape.circle)
       )
     );
   }
@@ -510,7 +517,7 @@ class _PulseMicIconState extends State<_PulseMicIcon> with SingleTickerProviderS
       builder: (context, child) => Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
+          boxShadow: [BoxShadow(color: Colors.redAccent.withValues(alpha: 0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
         ),
         child: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent),
       ),

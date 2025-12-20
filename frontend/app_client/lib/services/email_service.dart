@@ -1,7 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../session_service.dart';
-import '../api_service.dart';
+import 'api_service.dart';
 
 class UniEmail {
   final String id;
@@ -52,7 +52,7 @@ class EmailService {
       }
       return [];
     } catch (e) {
-      print('Error fetching emails: $e');
+      debugPrint('Error fetching emails: $e');
       rethrow;
     }
   }
@@ -77,7 +77,7 @@ class EmailService {
       }
       return 'Could not retrieve email body.';
     } catch (e) {
-      print('Error fetching email body: $e');
+      debugPrint('Error fetching email body: $e');
       return 'Error: $e';
     }
   }

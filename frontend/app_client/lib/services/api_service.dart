@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'models.dart';
+import '../models/models.dart';
 
 class ApiService {
   // Determine Base URL
@@ -22,7 +22,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/login');
     
     try {
-      print("Attempting login to $url with user $username${forceRefresh ? ' (force refresh)' : ''}");
+      debugPrint("Attempting login to $url with user $username${forceRefresh ? ' (force refresh)' : ''}");
       
       final response = await http.post(
         url,
@@ -34,14 +34,14 @@ class ApiService {
         }),
       );
 
-      print("Response status: ${response.statusCode}");
-      print("Response body: ${response.body}");
+      debugPrint("Response status: ${response.statusCode}");
+      debugPrint("Response body: ${response.body}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> loginResult = jsonDecode(response.body);
         
         if (loginResult['success'] == true) {
-          print("Login successful. Fetching BOSS data...");
+          debugPrint("Login successful. Fetching BOSS data...");
           
           // Step 2: Fetch Grades from BOSS
           try {
@@ -56,12 +56,12 @@ class ApiService {
               }),
             );
             
-            print("BOSS Response status: ${gradesResponse.statusCode}");
+            debugPrint("BOSS Response status: ${gradesResponse.statusCode}");
             
             if (gradesResponse.statusCode == 200) {
               final Map<String, dynamic> gradesResult = jsonDecode(gradesResponse.body);
               if (gradesResult['success'] == true) {
-                 print("BOSS data fetched successfully.");
+                 debugPrint("BOSS data fetched successfully.");
                  
                  // Deadlines are already included in loginResult from the login process
                  // Merge deadlines from login into grades data
@@ -70,17 +70,20 @@ class ApiService {
                   if (loginResult['data'] != null) {
                     if (loginResult['data']['moodle_deadlines'] != null) {
                       sessionData['moodle_deadlines'] = loginResult['data']['moodle_deadlines'];
-                      print("Merged ${(loginResult['data']['moodle_deadlines'] as List).length} deadlines from login");
+                      debugPrint("Merged ${(loginResult['data']['moodle_deadlines'] as List).length} deadlines from login");
                     }
                     if (loginResult['data']['current_classes'] != null) {
                       sessionData['current_classes'] = loginResult['data']['current_classes'];
-                      print("Merged ${(loginResult['data']['current_classes'] as List).length} classes from login");
+                      debugPrint("Merged ${(loginResult['data']['current_classes'] as List).length} classes from login");
+                    }
+                    if (loginResult['data']['user_id'] != null) {
+                      sessionData['user_id'] = loginResult['data']['user_id'];
                     }
                   }
                  
                  return SessionData.fromJson(sessionData);
               } else {
-                 print("BOSS fetch failed: ${gradesResult['error']}");
+                 debugPrint("BOSS fetch failed: ${gradesResult['error']}");
                  // Fallback to basic login data
                  final sessionData = loginResult['data'] as Map<String, dynamic>;
                  sessionData['username'] = username;
@@ -88,7 +91,7 @@ class ApiService {
               }
             }
           } catch (e) {
-            print("Error fetching BOSS data: $e");
+            debugPrint("Error fetching BOSS data: $e");
             // Fallback to basic login data
           }
           
@@ -98,7 +101,7 @@ class ApiService {
         } else {
           // Extract error message from response
           final errorMsg = loginResult['error'] ?? "Login failed. Please check your credentials.";
-          print("API returned error: $errorMsg");
+          debugPrint("API returned error: $errorMsg");
           throw Exception(errorMsg.toString());
         }
       } else {
@@ -116,7 +119,7 @@ class ApiService {
     } on FormatException {
       throw Exception("Invalid response from server. Please try again.");
     } catch (e) {
-      print("Login error: $e");
+      debugPrint("Login error: $e");
       // If it's already an Exception with a message, rethrow it
       if (e is Exception) {
         rethrow;

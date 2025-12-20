@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'models.dart';
+import '../models/models.dart';
 
 class SessionService {
   static const String _sessionKey = 'cached_session';
@@ -15,6 +16,7 @@ class SessionService {
       final sessionJson = jsonEncode({
         'profile_name': session.profileName,
         'username': session.username,
+        'user_id': session.userId,
         'ects_data': {
           'total_ects': session.ectsData.totalEcts,
           'courses_count': session.ectsData.coursesCount,
@@ -48,7 +50,7 @@ class SessionService {
       await prefs.setString(_lastLoginKey, DateTime.now().toIso8601String());
       return true;
     } catch (e) {
-      print('Error saving session: $e');
+      debugPrint('Error saving session: $e');
       return false;
     }
   }
@@ -98,9 +100,10 @@ class SessionService {
         examRequirements: examRequirements,
         currentClasses: currentClasses,
         detailedGrades: detailedGrades,
+        userId: decoded['user_id'],
       );
     } catch (e) {
-      print('Error loading session: $e');
+      debugPrint('Error loading session: $e');
       return null;
     }
   }
@@ -114,7 +117,7 @@ class SessionService {
       await prefs.setString(_passwordKey, password);
       return true;
     } catch (e) {
-      print('Error saving credentials: $e');
+      debugPrint('Error saving credentials: $e');
       return false;
     }
   }
@@ -132,7 +135,7 @@ class SessionService {
       
       return {'username': username, 'password': password};
     } catch (e) {
-      print('Error loading credentials: $e');
+      debugPrint('Error loading credentials: $e');
       return null;
     }
   }
@@ -145,7 +148,7 @@ class SessionService {
       await prefs.remove(_lastLoginKey);
       return true;
     } catch (e) {
-      print('Error clearing session: $e');
+      debugPrint('Error clearing session: $e');
       return false;
     }
   }
@@ -160,7 +163,7 @@ class SessionService {
       await prefs.remove(_lastLoginKey);
       return true;
     } catch (e) {
-      print('Error clearing credentials: $e');
+      debugPrint('Error clearing credentials: $e');
       return false;
     }
   }

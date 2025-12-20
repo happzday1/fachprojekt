@@ -1,18 +1,17 @@
-import 'dart:io' if (dart.library.html) 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
-import '../models.dart';
-import '../workspace_service.dart';
+import '../models/models.dart';
+import '../services/workspace_service.dart';
 import '../widgets/glass_container.dart';
-import '../audio_service.dart';
+import '../services/audio_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
 
 // Use conditional import for IoHelper
-import '../io_helper.dart' if (dart.library.html) '../io_helper_web.dart';
+import '../utils/io_helper.dart' if (dart.library.html) '../utils/io_helper_web.dart';
 
 class WorkspacePage extends StatefulWidget {
   final SessionData session;
@@ -36,7 +35,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   bool _isChatLoading = false;
   bool _isRecording = false;
   
-  String get _studentId => widget.session.username.toLowerCase().replaceAll(' ', '_');
+  String get _studentId => widget.session.userId ?? widget.session.username;
 
   @override
   void initState() {
@@ -140,7 +139,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
         setState(() => _isRecording = true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Recording error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Recording error: $e")));
+      }
       setState(() => _isRecording = false);
     }
   }
@@ -298,17 +299,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                      border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.add_rounded, size: 18, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                        Icon(Icons.add_rounded, size: 18, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
                         const SizedBox(width: 8),
                         Text(
                           "New Workspace",
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
                         ),
                       ],
                     ),
@@ -326,11 +327,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.folder_open_rounded, size: 64, color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                            Icon(Icons.folder_open_rounded, size: 64, color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
                             const SizedBox(height: 24),
                             Text("No workspaces yet", style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white38 : Colors.black38)),
                             const SizedBox(height: 8),
-                            Text("Create your first one to get started", style: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24))),
+                            Text("Create your first one to get started", style: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.24) : Colors.black.withValues(alpha: 0.24))),
                           ],
                         ),
                       )
@@ -473,11 +474,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
                                             style: GoogleFonts.inter(
                                               fontSize: 14, 
                                               height: 1.6, 
-                                              color: isDark ? Colors.white.withOpacity(0.8) : Colors.black87,
+                                              color: isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black87,
                                             ),
                                             decoration: InputDecoration(
                                               hintText: "Synthesize your knowledge here...\n\nAyla will use these notes to provide better context.",
-                                              hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+                                              hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
                                               border: InputBorder.none,
                                             ),
                                           ),
@@ -504,7 +505,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          Icon(icon, color: color.withOpacity(0.7), size: 18),
+          Icon(icon, color: color.withValues(alpha: 0.7), size: 18),
           const SizedBox(width: 12),
           Text(
             title.toUpperCase(),
@@ -525,7 +526,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          Icon(icon, color: color.withOpacity(0.7), size: 18),
+          Icon(icon, color: color.withValues(alpha: 0.7), size: 18),
           const SizedBox(width: 12),
           Text(
             title.toUpperCase(),
@@ -559,8 +560,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.35),
         decoration: BoxDecoration(
           color: isUser 
-              ? Colors.indigoAccent.withOpacity(isDark ? 0.15 : 0.08) 
-              : (isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.03)),
+              ? Colors.indigoAccent.withValues(alpha: isDark ? 0.15 : 0.08) 
+              : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -569,14 +570,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
           ),
           border: Border.all(
             color: isUser 
-                ? Colors.indigoAccent.withOpacity(0.2) 
-                : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))
+                ? Colors.indigoAccent.withValues(alpha: 0.2) 
+                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))
           ),
         ),
         child: Text(
           msg['message'] ?? '',
           style: GoogleFonts.inter(
-            color: isDark ? Colors.white.withOpacity(0.9) : Colors.black87,
+            color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
             height: 1.6,
             fontSize: 14,
           ),
@@ -589,7 +590,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))),
+        border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))),
       ),
       child: Row(
         children: [
@@ -599,7 +600,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
               style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black, fontSize: 14),
               decoration: InputDecoration(
                 hintText: _isRecording ? "Listening..." : "Collaborate with Ayla...",
-                hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.24) : Colors.black.withValues(alpha: 0.24)),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 suffixIcon: IconButton(
@@ -613,11 +614,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
           const SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: Icon(Icons.send_rounded, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7), size: 20),
+              icon: Icon(Icons.send_rounded, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7), size: 20),
               onPressed: _sendChatMessage,
             ),
           ),
@@ -631,9 +632,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
@@ -642,13 +643,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
           Expanded(
             child: Text(
               file['filename'] ?? 'File',
-              style: GoogleFonts.inter(color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7), fontSize: 13),
+              style: GoogleFonts.inter(color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7), fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withOpacity(0.5)),
+            icon: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withValues(alpha: 0.5)),
             onPressed: () => _deleteFile(file['id']),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -683,9 +684,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 32, color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+          Icon(icon, size: 32, color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
           const SizedBox(height: 12),
-          Text(message, style: GoogleFonts.inter(color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24), fontSize: 13)),
+          Text(message, style: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.24) : Colors.black.withValues(alpha: 0.24), fontSize: 13)),
         ],
       ),
     );
@@ -698,9 +699,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
@@ -739,7 +740,7 @@ class _WorkspaceCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.1),
+                      color: Colors.amber.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.folder_rounded, size: 32, color: Colors.amber),
@@ -798,7 +799,7 @@ class _PulseMicIconState extends State<_PulseMicIcon> with SingleTickerProviderS
       builder: (context, child) => Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
+          boxShadow: [BoxShadow(color: Colors.redAccent.withValues(alpha: 0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
         ),
         child: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent, size: 20),
       ),

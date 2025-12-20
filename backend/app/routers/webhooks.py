@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, Header, HTTPException, BackgroundTasks, Depends
 from dotenv import load_dotenv
 
-from moodle_scraper import MoodleScraper
+from app.scrapers.moodle_scraper import MoodleScraper
 # No longer importing global supabase, will use engine or get_supabase if needed
 
 

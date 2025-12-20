@@ -3,7 +3,7 @@ import time
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from boss_scraper import BossScraper
+from app.scrapers.boss_scraper import BossScraper
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class LsfScraper(BossScraper):
             from datetime import datetime
             import os
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            from webdriver_utils import DEBUG_DIR
+            from app.utils.webdriver_utils import DEBUG_DIR
             base_path = os.path.join(DEBUG_DIR, f"{prefix}_{timestamp}")
             self.driver.save_screenshot(f"{base_path}.png")
             with open(f"{base_path}.html", "w", encoding="utf-8") as f:

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'models.dart';
-import 'session_service.dart';
+import 'models/models.dart';
+import 'services/session_service.dart';
 import 'widgets/glass_container.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
@@ -135,7 +135,7 @@ class _MainScreenState extends State<MainScreen> {
             Positioned.fill(
               child: GestureDetector(
                 onTap: () => setState(() => _isSidebarOpen = false),
-                child: Container(color: Colors.black.withOpacity(0.4)),
+                child: Container(color: Colors.black.withValues(alpha: 0.4)),
               ),
             ),
           AnimatedPositioned(
@@ -149,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: 0,
               opacity: isDark ? 0.08 : 0.4,
               blur: 20,
-              border: Border(right: BorderSide(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))),
+              border: Border(right: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -160,7 +160,7 @@ class _MainScreenState extends State<MainScreen> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF38B6FF).withOpacity(0.1),
+                            color: const Color(0xFF38B6FF).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 20),
@@ -240,7 +240,7 @@ class _MainScreenState extends State<MainScreen> {
                     opacity: isDark ? 0.05 : 0.1,
                     child: Icon(
                       Icons.menu_open_rounded, 
-                      color: isDark ? Colors.white.withOpacity(0.8) : Colors.black.withOpacity(0.7), 
+                      color: isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.7), 
                       size: 22
                     ),
                   ),
@@ -286,13 +286,13 @@ class _SidebarActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: isDestructive 
-              ? Colors.redAccent.withOpacity(0.05) 
-              : (isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03)),
+              ? Colors.redAccent.withValues(alpha: 0.05) 
+              : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDestructive 
-                ? Colors.redAccent.withOpacity(0.1) 
-                : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05))
+                ? Colors.redAccent.withValues(alpha: 0.1) 
+                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))
           ),
         ),
         child: Row(

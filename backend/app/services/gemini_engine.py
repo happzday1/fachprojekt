@@ -36,7 +36,7 @@ class GeminiEngine:
     def __init__(self, client: genai.Client):
         self.client = client
 
-    async def get_or_create_cache(self, workspace_id: str, files: Optional[List[Dict]] = None) -> str:
+    async def get_or_create_cache(self, workspace_id: str, files: Optional[List[Dict]] = None, user_id: Optional[str] = None) -> str:
         """
         Retrieves an active cache name for the workspace, or creates a new one
         if it doesn't exist or has expired.
@@ -44,6 +44,7 @@ class GeminiEngine:
         Args:
             workspace_id: The UUID of the workspace.
             files: Optional list of file records to cache. If None, fetched from DB.
+            user_id: The student's ID/username to fetch academic context.
             
         Returns:
             The resource name of the cache (e.g., 'cachedContents/xyz...')
@@ -79,9 +80,9 @@ class GeminiEngine:
             # Proceed to create new cache if check fails
             
         # 2. Cache invalid or missing -> Create updated cache
-        return await self._create_workspace_cache(workspace_id, files)
+        return await self._create_workspace_cache(workspace_id, files, user_id)
 
-    async def _create_workspace_cache(self, workspace_id: str, files: Optional[List[Dict]] = None) -> str:
+    async def _create_workspace_cache(self, workspace_id: str, files: Optional[List[Dict]] = None, user_id: Optional[str] = None) -> str:
         """
         Internal: Uploads files and creates a new cache.
         """
@@ -120,6 +121,17 @@ class GeminiEngine:
             ws_response = await supabase.table("workspaces").select("name, description").eq("id", workspace_id).single().execute()
             ws_name = ws_response.data['name']
             
+            # Fetch academic summary if user_id is provided
+            academic_context = ""
+            if user_id:
+                from app.services.academic_service import AcademicService
+                from app.routers.workspace_router import username_to_uuid
+                service = AcademicService()
+                u_uuid = username_to_uuid(user_id)
+                academic_context = await service.get_academic_summary(u_uuid)
+
+            full_system_instruction = f"{academic_context}\n\nYou are a helpful teaching assistant for the course/project '{ws_name}'. Use the provided materials to answer questions."
+            
             cache_config = types.CreateCachedContentConfig(
                 contents=[
                     types.Content(
@@ -130,7 +142,7 @@ class GeminiEngine:
                         ]
                     )
                 ],
-                system_instruction=f"You are a helpful teaching assistant for the course/project '{ws_name}'. Use the provided materials to answer questions.",
+                system_instruction=full_system_instruction,
                 ttl="3600s", # 1 hour
                 display_name=f"Workspace-{workspace_id}"
             )

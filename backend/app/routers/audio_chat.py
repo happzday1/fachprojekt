@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from google import genai
 from google.genai import types
 from app.services.gemini_engine import GeminiEngine
+from app.services.academic_service import AcademicService
 from app.features.audio_processor import process_audio_input
 from backend_config import MODEL_NAME
 
@@ -38,7 +39,7 @@ async def chat_with_audio(
         
         # 2. Setup Services
         engine = GeminiEngine(client)
-        from workspace_service import WorkspaceService
+        from app.services.workspace_service import WorkspaceService
         ws_service = WorkspaceService()
         
         # 3. Resolve Workspace context
@@ -66,9 +67,22 @@ async def chat_with_audio(
             raise HTTPException(status_code=400, detail="Failed to process audio")
 
         # 5. Generate Response
-        # We explicitly instruct to respond in the input language
+        # Include Academic Context and Current Date
+        academic_service = AcademicService()
+        from app.routers.workspace_router import username_to_uuid
+        
+        # Robust UUID resolution
+        try:
+            import uuid as uuid_lib
+            uuid_lib.UUID(user_id)
+            user_uuid = user_id
+        except:
+            user_uuid = username_to_uuid(user_id) if user_id and user_id != "anonymous" else None
+            
+        academic_summary = await academic_service.get_academic_summary(user_uuid)
+        
         prompt_parts = [
-            types.Part(text="Listen to this audio and respond to the user's request. **IMPORTANT: Respond in the same language the user is speaking.**")
+            types.Part(text=f"{academic_summary}\n\nListen to this audio and respond to the user's request. **IMPORTANT: Respond in the same language the user is speaking.**")
         ]
         
         # Add fallback files if cache failed
@@ -103,7 +117,7 @@ async def chat_with_audio(
         # 6. Save to Database (Persistence)
         if workspace_id:
             try:
-                from workspace_api import username_to_uuid, supabase
+                from app.routers.workspace_router import username_to_uuid, supabase
                 user_uuid = username_to_uuid(user_id)
                 
                 # Ensure a Chat session exists

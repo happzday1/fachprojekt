@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import '../api_service.dart';
-import '../session_service.dart';
-import '../models.dart';
+import '../services/api_service.dart';
+import '../services/session_service.dart';
 import '../widgets/glass_container.dart';
 import '../main.dart'; // To access MainScreen
 
@@ -137,7 +136,7 @@ class _LoginPageState extends State<LoginPage> {
               Text(
                 "Initializing Ayla",
                 style: GoogleFonts.inter(
-                  color: isDark ? Colors.white.withOpacity(0.6) : Colors.black.withOpacity(0.6),
+                  color: isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.6),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 2,
@@ -166,7 +165,7 @@ class _LoginPageState extends State<LoginPage> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFF38B6FF).withOpacity(isDark ? 0.05 : 0.03),
+                    const Color(0xFF38B6FF).withValues(alpha: isDark ? 0.05 : 0.03),
                     Colors.transparent,
                   ],
                 ),
@@ -183,9 +182,9 @@ class _LoginPageState extends State<LoginPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
                       shape: BoxShape.circle,
-                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                      border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
                     ),
                     child: Icon(
                       Icons.auto_awesome_rounded, 
@@ -253,9 +252,9 @@ class _LoginPageState extends State<LoginPage> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: Colors.redAccent.withOpacity(0.05),
+                              color: Colors.redAccent.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.redAccent.withOpacity(0.1)),
+                              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.1)),
                             ),
                             child: Row(
                               children: [
@@ -342,9 +341,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
         Container(
           decoration: BoxDecoration(
-            color: isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.4),
+            color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
           ),
           child: TextField(
             controller: controller,
@@ -358,7 +357,7 @@ class _LoginPageState extends State<LoginPage> {
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               hintText: "Enter placeholder...",
-              hintStyle: TextStyle(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+              hintStyle: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
             ),
           ),
         ),

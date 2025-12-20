@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../api_service.dart';
-import '../session_service.dart';
-import '../models.dart';
-import '../ayla_service.dart';
+import '../services/api_service.dart';
+import '../services/session_service.dart';
+import '../models/models.dart';
+import '../services/ayla_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/email/email_list_widget.dart';
-import '../workspace_service.dart';
+import '../services/workspace_service.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -80,9 +81,11 @@ class _DashboardPageState extends State<DashboardPage> {
             _session = newSession;
             _workspaces = workspaces;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Dashboard updated successfully!'), backgroundColor: Colors.green),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Dashboard updated successfully!'), backgroundColor: Colors.green),
+            );
+          }
         }
       }
     } catch (e) {
@@ -279,7 +282,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 const SizedBox(height: 16),
                                 Text(
                                   DateFormat('EEEE, d MMMM').format(_selectedCalendarDate!),
-                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
                                 ),
                                 const SizedBox(height: 12),
                                 ..._selectedDateEvents!.map((event) => _buildEventItem(event, isDark)),
@@ -326,7 +329,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildStatsRow(SessionData session, bool isDark) {
-    final double ectsPercentage = (session.ectsData.totalEcts / 180.0).clamp(0.0, 1.0);
     
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +372,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.indigoAccent.withOpacity(0.1),
+              color: Colors.indigoAccent.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.auto_awesome_rounded, color: Colors.indigoAccent, size: 24),
@@ -404,7 +406,7 @@ class _DashboardPageState extends State<DashboardPage> {
               : ElevatedButton(
                   onPressed: _generateStudyPlan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigoAccent.withOpacity(0.1),
+                    backgroundColor: Colors.indigoAccent.withValues(alpha: 0.1),
                     foregroundColor: Colors.indigoAccent,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -515,7 +517,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
-      backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+      backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
       progressColor: const Color(0xFF38B6FF),
     );
   }
@@ -533,7 +535,7 @@ class _DashboardPageState extends State<DashboardPage> {
         const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 16),
         ),
       ],
@@ -550,7 +552,7 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           Row(
             children: [
-              Icon(icon, color: color.withOpacity(0.7), size: 18),
+              Icon(icon, color: color.withValues(alpha: 0.7), size: 18),
               const SizedBox(width: 12),
               Text(
                 title.toUpperCase(),
@@ -579,9 +581,9 @@ class _DashboardPageState extends State<DashboardPage> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
@@ -623,7 +625,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (event.platform == 'Ayla' ? Colors.redAccent : const Color(0xFF38B6FF)).withOpacity(0.1),
+                color: (event.platform == 'Ayla' ? Colors.redAccent : const Color(0xFF38B6FF)).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -661,10 +663,18 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           if (event.link != null && event.link!.isNotEmpty)
             ElevatedButton(
-              onPressed: () {
-                // In a real app we'd use url_launcher
+              onPressed: () async {
+                final link = event.link!;
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Opening platform link...")));
+                if (await canLaunchUrlString(link)) {
+                  await launchUrlString(link, mode: LaunchMode.externalApplication);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Could not open link: $link")),
+                    );
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF38B6FF),
@@ -712,7 +722,7 @@ class _UpcomingListCompact extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (sorted.isEmpty) {
-      return Center(child: Text("All caught up!", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)));
+      return Center(child: Text("All caught up!", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)));
     }
     final ScrollController controller = ScrollController();
 
@@ -747,9 +757,9 @@ class _UpcomingListCompact extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
                       ),
                       child: Row(
                         children: [
@@ -776,7 +786,7 @@ class _UpcomingListCompact extends StatelessWidget {
                           const SizedBox(width: 12),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                            decoration: BoxDecoration(color: urgencyColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                             child: Text(
                               daysUntil == 0 ? "Today" : (daysUntil == 1 ? "Tomorrow" : "$daysUntil days"), 
                               style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: urgencyColor)
@@ -824,7 +834,9 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
         final date = DateTime.parse(deadline.date);
         final dayOnly = DateTime(date.year, date.month, date.day);
         events.putIfAbsent(dayOnly, () => []).add(CalendarEvent.fromDeadline(deadline));
-      } catch (e) {}
+      } catch (e) {
+        debugPrint("Error parsing data: $e");
+      }
     }
 
     return TableCalendar<CalendarEvent>(
@@ -840,9 +852,9 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
       eventLoader: (day) => events[DateTime(day.year, day.month, day.day)] ?? [],
       calendarStyle: CalendarStyle(
         outsideDaysVisible: false,
-        weekendTextStyle: GoogleFonts.inter(color: Colors.redAccent.withOpacity(0.6), fontSize: 13),
-        defaultTextStyle: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
-        todayDecoration: BoxDecoration(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1), shape: BoxShape.circle),
+        weekendTextStyle: GoogleFonts.inter(color: Colors.redAccent.withValues(alpha: 0.6), fontSize: 13),
+        defaultTextStyle: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
+        todayDecoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1), shape: BoxShape.circle),
         todayTextStyle: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
         selectedDecoration: const BoxDecoration(color: Color(0xFF38B6FF), shape: BoxShape.circle),
         selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -867,7 +879,7 @@ class _CurrentClassesListCompact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (classes.isEmpty) return Center(child: Text("No active classes", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)));
+    if (classes.isEmpty) return Center(child: Text("No active classes", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)));
     
     final ScrollController controller = ScrollController();
     
@@ -894,13 +906,13 @@ class _CurrentClassesListCompact extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12), 
                 padding: const EdgeInsets.all(16), 
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02), 
+                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02), 
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
                 ), 
                 child: Row(
                   children: [
-                    Icon(Icons.bookmark_rounded, size: 16, color: const Color(0xFF38B6FF).withOpacity(0.6)), 
+                    Icon(Icons.bookmark_rounded, size: 16, color: const Color(0xFF38B6FF).withValues(alpha: 0.6)), 
                     const SizedBox(width: 16), 
                     Expanded(child: Text(c, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black87)))
                   ]
@@ -922,7 +934,7 @@ class _PassedExamsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final passed = examRequirements.expand((c) => c.exams).where((e) => e.passed).toList();
-    if (passed.isEmpty) return Center(child: Text("No results found", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)));
+    if (passed.isEmpty) return Center(child: Text("No results found", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)));
     final ScrollController controller = ScrollController();
     
     return Theme(
@@ -946,7 +958,7 @@ class _PassedExamsList extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8), 
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02), 
+                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02), 
                 borderRadius: BorderRadius.circular(12),
               ), 
               child: Row(
@@ -956,7 +968,7 @@ class _PassedExamsList extends StatelessWidget {
                   Expanded(
                     child: Text(
                       e.name, 
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     )
@@ -983,7 +995,7 @@ class _WorkspacesListCompact extends StatelessWidget {
       return Center(
         child: Text(
           "No workspaces yet", 
-          style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)
+          style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)
         )
       );
     }
@@ -1014,9 +1026,9 @@ class _WorkspacesListCompact extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02), 
+                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02), 
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
                   ), 
                   child: Row(
                     children: [
@@ -1025,7 +1037,7 @@ class _WorkspacesListCompact extends StatelessWidget {
                       Expanded(
                         child: Text(
                           w['name'] ?? 'Untitled', 
-                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         )

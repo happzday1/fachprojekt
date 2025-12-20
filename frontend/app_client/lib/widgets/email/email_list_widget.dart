@@ -45,12 +45,12 @@ class _EmailListWidgetState extends State<EmailListWidget> {
           children: [
             TextButton.icon(
               onPressed: _onRefresh,
-              icon: Icon(Icons.refresh_rounded, size: 16, color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.5)),
+              icon: Icon(Icons.refresh_rounded, size: 16, color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.5)),
               label: Text(
                 "Refresh",
                 style: GoogleFonts.outfit(
                   fontSize: 12,
-                  color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.5),
+                  color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.5),
                 ),
               ),
               style: TextButton.styleFrom(
@@ -87,7 +87,7 @@ class _EmailListWidgetState extends State<EmailListWidget> {
                 shrinkWrap: false,
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: emails.length > 20 ? 20 : emails.length,
-                separatorBuilder: (context, index) => Divider(color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.1)),
+                separatorBuilder: (context, index) => Divider(color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.1)),
                 itemBuilder: (context, index) {
                   final email = emails[index];
                   return ListTile(
@@ -110,7 +110,7 @@ class _EmailListWidgetState extends State<EmailListWidget> {
                           email.sender,
                           style: GoogleFonts.outfit(
                             fontSize: 13,
-                            color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.6),
+                            color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.6),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -119,7 +119,7 @@ class _EmailListWidgetState extends State<EmailListWidget> {
                           email.date,
                           style: GoogleFonts.outfit(
                             fontSize: 11,
-                            color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.4),
+                            color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.4),
                           ),
                         ),
                       ],
@@ -139,7 +139,7 @@ class _EmailListWidgetState extends State<EmailListWidget> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Dialog(
@@ -184,18 +184,18 @@ class _EmailListWidgetState extends State<EmailListWidget> {
                       'From: ${email.sender}',
                       style: GoogleFonts.outfit(
                         fontSize: 14,
-                        color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.7),
+                        color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.7),
                       ),
                     ),
                     Text(
                       'Date: ${email.date}',
                       style: GoogleFonts.outfit(
                         fontSize: 14,
-                        color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.7),
+                        color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    Divider(color: (widget.isDark ? Colors.white : Colors.black).withOpacity(0.1)),
+                    Divider(color: (widget.isDark ? Colors.white : Colors.black).withValues(alpha: 0.1)),
                     const SizedBox(height: 16),
                     Flexible(
                       child: SingleChildScrollView(

@@ -1,9 +1,9 @@
 import 'package:record/record.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 
 // Use conditional import for IoHelper
-import 'io_helper.dart' if (dart.library.html) 'io_helper_web.dart';
+import '../utils/io_helper.dart' if (dart.library.html) '../utils/io_helper_web.dart';
 import 'package:path_provider/path_provider.dart' show getApplicationDocumentsDirectory;
 
 class AudioService {
@@ -36,12 +36,12 @@ class AudioService {
 
         // On Web, path is ignored and it returns a blob URL in stop()
         await _audioRecorder.start(config, path: filePath ?? '');
-        print("Recording started${filePath != null ? ': $filePath' : ' (Web)'}");
+        debugPrint("Recording started${filePath != null ? ': $filePath' : ' (Web)'}");
       } else {
         throw Exception("Microphone permission denied");
       }
     } catch (e) {
-      print("Error starting recording: $e");
+      debugPrint("Error starting recording: $e");
       rethrow;
     }
   }
@@ -50,10 +50,10 @@ class AudioService {
   static Future<String?> stopRecording() async {
     try {
       final String? path = await _audioRecorder.stop();
-      print("Recording stopped: $path");
+      debugPrint("Recording stopped: $path");
       return path;
     } catch (e) {
-      print("Error stopping recording: $e");
+      debugPrint("Error stopping recording: $e");
       return null;
     }
   }

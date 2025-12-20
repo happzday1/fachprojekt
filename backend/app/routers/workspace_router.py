@@ -21,7 +21,8 @@ from supabase import create_client, Client
 from google import genai
 from google.genai import types
 
-from workspace_service import WorkspaceService
+from app.services.workspace_service import WorkspaceService
+from app.services.academic_service import AcademicService
 from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
 
 logger = logging.getLogger(__name__)
@@ -249,8 +250,15 @@ async def get_chats(workspace_id: str):
 async def send_chat(workspace_id: str, data: ChatMessage):
     """Send a chat message using Context Caching."""
     try:
-        user_id = data.user_id
-        user_uuid = username_to_uuid(user_id)  # Convert to UUID for database
+        user_id = data.user_id # This can be a UUID or a username
+        
+        # Robust UUID resolution: if it's already a UUID, keep it. If not, hash it.
+        try:
+            import uuid as uuid_lib
+            uuid_lib.UUID(user_id)
+            user_uuid = user_id
+        except:
+            user_uuid = username_to_uuid(user_id) if user_id and user_id != "anonymous" else None
         
         # 1. Ensure a Chat session exists
         chats_resp = supabase.table("chats").select("id").eq("workspace_id", workspace_id).execute()
@@ -290,8 +298,12 @@ async def send_chat(workspace_id: str, data: ChatMessage):
         
         # 4. Generate Response
         
-        # Prepare system instruction
-        sys_part = types.Part(text=SYSTEM_INSTRUCTION)
+        # Prepare system instruction with Academic Context
+        academic_service = AcademicService()
+        academic_summary = await academic_service.get_academic_summary(user_uuid)
+        
+        full_sys_instr = f"{academic_summary}\n\n{SYSTEM_INSTRUCTION}"
+        sys_part = types.Part(text=full_sys_instr)
         
         # Prepare content for current generation
         # If we have cache, we only send the NEW parts or the whole history?

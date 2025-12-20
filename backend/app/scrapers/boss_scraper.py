@@ -16,7 +16,7 @@ import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-from webdriver_utils import get_cached_driver_path, DEBUG_DIR
+from app.utils.webdriver_utils import get_cached_driver_path, DEBUG_DIR
 
 logger = logging.getLogger(__name__)
 

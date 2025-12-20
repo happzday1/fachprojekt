@@ -54,11 +54,28 @@ async def stream_chat(
             cached_content_name = None
             
             # 1. Resolve Workspace Context
+            academic_summary = ""
             if request.workspace_id:
                 engine = GeminiEngine(client)
-                cached_content_name = await engine.get_or_create_cache(request.workspace_id)
+                cached_content_name = await engine.get_or_create_cache(request.workspace_id, user_id=user_id)
                 if cached_content_name:
                     logger.info(f"Using Cache: {cached_content_name}")
+            
+            if not cached_content_name:
+                # If no cache (e.g. content too small), inject context manually
+                from app.services.academic_service import AcademicService
+                from app.routers.workspace_router import username_to_uuid
+                service = AcademicService()
+                
+                # Robust UUID resolution
+                try:
+                    import uuid as uuid_lib
+                    uuid_lib.UUID(user_id)
+                    user_uuid = user_id
+                except:
+                    user_uuid = username_to_uuid(user_id) if user_id and user_id != "anonymous" else None
+                
+                academic_summary = await service.get_academic_summary(user_uuid)
             
             # 2. Config
             config = types.GenerateContentConfig(
@@ -67,11 +84,13 @@ async def stream_chat(
             )
             
             # 3. Stream from Gemini
-            # In google-genai V1, use generate_content_stream for aio
+            # Prepend academic summary if we are not using a cache
+            # (If using cache, the summary is already in the system instruction)
+            prompt_content = f"{academic_summary}\n\n{request.message}" if academic_summary else request.message
             
             async for chunk in client.aio.models.generate_content_stream(
                 model=MODEL_NAME, 
-                contents=request.message,
+                contents=prompt_content,
                 config=config,
             ):
                 if chunk.text:

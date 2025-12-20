@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 # Scrapers & Tools
-from boss_scraper import BossScraper
-from moodle_scraper import MoodleScraper
-from lsf_scraper import LsfScraper
+from app.scrapers.boss_scraper import BossScraper
+from app.scrapers.moodle_scraper import MoodleScraper
+from app.scrapers.lsf_scraper import LsfScraper
 from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
 from app.features.email.email_service import fetch_headers, fetch_body
 from selenium import webdriver
@@ -37,9 +37,11 @@ from google.genai import types
 from google.genai import errors as genai_errors
 
 # Workspace API router
-from workspace_api import router as workspace_router
+from app.routers.workspace_router import router as workspace_router, username_to_uuid
 from app.routers import stream_chat, webhooks, audio_chat
 from app.auth import supabase_auth
+from app.services.academic_service import AcademicService
+from app.services.gemini_engine import get_supabase
 
 
 
@@ -98,7 +100,7 @@ conversation_memory = ConversationMemory(ttl_hours=24)
 USER_CACHE_TTL = 86400  # 24 hours
 user_login_cache = TTLCache(maxsize=500, ttl=USER_CACHE_TTL)
 user_grades_cache = TTLCache(maxsize=500, ttl=USER_CACHE_TTL)
-from webdriver_utils import get_cached_driver_path, DEBUG_DIR
+from app.utils.webdriver_utils import get_cached_driver_path, DEBUG_DIR
 
 def get_cache_key(username: str) -> str:
     return hashlib.sha256(username.encode()).hexdigest()[:16]
@@ -158,6 +160,7 @@ class Credentials(BaseModel):
     password: str
     totp_secret: Optional[str] = None
     force_refresh: bool = False
+    user_id: Optional[str] = None # Real Supabase UUID
 
 class ChatRequest(BaseModel):
     prompt: str = Field(..., min_length=1)
@@ -195,22 +198,37 @@ async def ask_ayla(
         user_id = request.student_id or "anonymous"
         messages = []
         
-        # Add Student Context (Deadlines, Grades, etc.)
-        if request.student_context:
+        # 1. Fetch Academic Context from Database (Primary Source)
+        # Fix: Always resolve UUID and fetch from DB for rich context (grades, deadlines)
+        try:
+            import uuid as uuid_lib
+            uuid_lib.UUID(user_id)
+            user_uuid = user_id
+        except:
+            user_uuid = username_to_uuid(user_id) if user_id != "anonymous" else None
+            
+        academic_context = ""
+        if user_uuid:
+            service = AcademicService()
+            academic_context = await service.get_academic_summary(user_uuid)
+            messages.append(academic_context)
+        
+        # 2. Add Frontend Context (Supplemental/Fallback)
+        # Only add if we didn't get a good DB summary or if it adds something new (optional)
+        # For now, we rely on DB, but if DB fails (empty string), we might want frontend context.
+        # However, AcademicService usually returns at least the date.
+        
+        if not academic_context and request.student_context:
             ctx = request.student_context
-            ctx_msg = "[STUDENT ACADEMIC CONTEXT]\n"
+            ctx_msg = "[STUDENT ACADEMIC CONTEXT (Frontend Fallback)]\n"
             if ctx.get('profile_name'): ctx_msg += f"- Name: {ctx['profile_name']}\n"
             if ctx.get('ects_data'):
                 ects = ctx['ects_data']
-                ctx_msg += f"- ECTS: {ects.get('total_ects')}/180\n"
+                ctx_msg += f"- ECTS: {ects.get('total_ects')}\n"
                 ctx_msg += f"- Avg Grade: {ects.get('average_grade')}\n"
-            
-            if ctx.get('moodle_deadlines'):
-                ctx_msg += "- Upcoming Deadlines:\n"
-                for d in ctx['moodle_deadlines'][:10]:
-                    ctx_msg += f"  * {d.get('title')} ({d.get('course')}) due {d.get('date')}\n"
-            
             messages.append(ctx_msg)
+        elif not academic_context:
+            messages.append(f"Today's Date: {datetime.now().strftime('%A, %B %d, %Y')}")
 
         # Add History
         history = conversation_memory.get_history(user_id)
@@ -260,16 +278,27 @@ async def chat_with_memory(
         messages = []
         
         # 1. Add context
-        if request.student_context:
-            ctx = request.student_context
-            if ctx.get('name') or ctx.get('gpa'):
-                messages.append(f"""
-[STUDENT DATA]
-- Name: {ctx.get('name', 'Student')}
-- GPA: {ctx.get('gpa', 'N/A')}
-- ECTS: {ctx.get('ects', 'N/A')}
-- Degree: {ctx.get('degree', 'Informatik')}
-""")
+        # 1. Fetch Academic Context (DB Primary)
+        try:
+            import uuid as uuid_lib
+            uuid_lib.UUID(user_id)
+            user_uuid = user_id
+        except:
+            user_uuid = username_to_uuid(user_id) if user_id != "anonymous" else None
+
+        academic_context = ""
+        if user_uuid:
+            service = AcademicService()
+            academic_context = await service.get_academic_summary(user_uuid)
+            messages.append(academic_context)
+
+        # 2. Add Frontend Context (Fallback)
+        if not academic_context and request.student_context:
+             ctx = request.student_context
+             if ctx.get('name'):
+                messages.append(f"[STUDENT DATA (Frontend)]\n- Name: {ctx.get('name')}\n- Degree: {ctx.get('degree')}")
+        elif not academic_context:
+             messages.append(f"Today's Date: {datetime.now().strftime('%A, %B %d, %Y')}")
         
         # 2. Add History
         history = conversation_memory.get_history(user_id)
@@ -353,6 +382,13 @@ async def login(creds: Credentials):
             current_classes = l_result.get("current_classes", [])
             logger.info(f"Fetched {len(current_classes)} current classes from LSF.")
             
+        # 3. Persist to Database for AI access
+        # If frontend passed a real user_id (Supabase UUID), use it. Fallback to hash only if missing.
+        user_uuid = creds.user_id or username_to_uuid(creds.username)
+        service = AcademicService()
+        await service.save_deadlines(user_uuid, moodle_deadlines)
+        # Note: Academic profile is updated in fetch-grades where we have GPA/ECTS
+            
     except Exception as e:
         logger.error(f"Login/Fetch error: {e}")
         return {"success": False, "error": "error"}
@@ -369,7 +405,8 @@ async def login(creds: Credentials):
             "moodle_deadlines": moodle_deadlines,
             "exam_requirements": [],
             "current_classes": current_classes,
-            "detailed_grades": []
+            "detailed_grades": [],
+            "user_id": user_uuid
         }
     }
     user_login_cache[key] = response
@@ -446,6 +483,9 @@ async def fetch_grades(creds: Credentials):
 
     logger.info(f"Final Grade Logic: Official={official_gpa}, Calculated={average_grade} -> Selected={final_average_grade}")
     
+    # If frontend passed a real user_id (Supabase UUID), use it. Fallback to hash only if missing.
+    user_uuid = creds.user_id or username_to_uuid(creds.username)
+    
     response = {
         "success": True,
         "data": {
@@ -474,9 +514,15 @@ async def fetch_grades(creds: Credentials):
                 }
             ],
             "moodle_deadlines": [],  # Moodle deadlines are merged in login endpoint
-            "current_classes": []    # LSF classes are merged in login endpoint
+            "current_classes": [],    # LSF classes are merged in login endpoint
+            "user_id": user_uuid
         }
     }
+    
+    # Persist to Database
+    service = AcademicService()
+    await service.save_grades(user_uuid, detailed_grades, response["data"]["ects_data"])
+    
     user_grades_cache[key] = response
     return response
 
@@ -509,6 +555,82 @@ async def get_email_details(req: EmailDetailsRequest):
         if "Authentication failed" in str(e):
             raise HTTPException(status_code=401, detail="Invalid university credentials")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# CALENDAR / EVENTS ENDPOINTS
+# ============================================
+
+@app.get("/events/{user_id}")
+async def get_events(user_id: str):
+    """Fetches unified events (manual reminders + scraped deadlines)."""
+    logger.info(f"Fetching events for {user_id}")
+    try:
+        supabase = await get_supabase()
+        
+        # Resolve UUID
+        try:
+            import uuid as uuid_lib
+            uuid_lib.UUID(user_id)
+            user_uuid = user_id
+        except:
+            user_uuid = username_to_uuid(user_id) if user_id != "anonymous" else None
+            
+        if not user_uuid:
+            return {"success": True, "events": []}
+            
+        # 1. Fetch Reminders
+        rem_resp = await supabase.table("reminders").select("*").eq("user_id", user_uuid).execute()
+        reminders = rem_resp.data if rem_resp.data else []
+        
+        # 2. Fetch Deadlines
+        dl_resp = await supabase.table("student_deadlines").select("*").eq("user_id", user_uuid).execute()
+        deadlines = dl_resp.data if dl_resp.data else []
+        
+        # Unify
+        events = []
+        for r in reminders:
+            events.append({
+                "id": r["id"],
+                "title": r.get("title", "Reminder"),
+                "date": r.get("due_date"),
+                "type": "reminder",
+                "description": r.get("description")
+            })
+        for d in deadlines:
+            events.append({
+                "id": d["id"],
+                "title": d["activity_name"],
+                "date": d["due_date"],
+                "type": "deadline",
+                "course": d.get("course_name")
+            })
+            
+        return {"success": True, "events": events}
+    except Exception as e:
+        logger.error(f"Error fetching events: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.delete("/events/{event_id}")
+async def delete_event(event_id: str):
+    """Deletes an event (tries reminders first, then deadlines)."""
+    logger.info(f"Deleting event {event_id}")
+    try:
+        supabase = await get_supabase()
+        
+        # Try reminders
+        resp = await supabase.table("reminders").delete().eq("id", event_id).execute()
+        if resp.data:
+            return {"success": True}
+            
+        # Try deadlines
+        resp = await supabase.table("student_deadlines").delete().eq("id", event_id).execute()
+        if resp.data:
+            return {"success": True}
+            
+        return {"success": False, "error": "Event not found"}
+    except Exception as e:
+        logger.error(f"Error deleting event: {e}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

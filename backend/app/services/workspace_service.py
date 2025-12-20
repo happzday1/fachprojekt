@@ -163,12 +163,23 @@ class WorkspaceService:
 
         # Create cache
         try:
+            # Fetch academic summary if user_id is provided
+            academic_context = ""
+            if user_id:
+                from app.services.academic_service import AcademicService
+                from app.routers.workspace_router import username_to_uuid
+                service = AcademicService()
+                u_uuid = username_to_uuid(user_id)
+                academic_context = await service.get_academic_summary(u_uuid)
+            
+            full_sys_instr = f"{academic_context}\n\n{SYSTEM_INSTRUCTION}"
+
             cache = await self.gemini_client.aio.caches.create(
                 model=MODEL_NAME,
                 config=types.CreateCachedContentConfig(
                     system_instruction=types.Content(
                         role="system",
-                        parts=[types.Part(text=SYSTEM_INSTRUCTION)]
+                        parts=[types.Part(text=full_sys_instr)]
                     ),
                     contents=cached_contents,
                     ttl="7200s" # 2 hours

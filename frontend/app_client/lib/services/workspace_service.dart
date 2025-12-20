@@ -30,7 +30,7 @@ class WorkspaceService {
       }
       return [];
     } catch (e) {
-      print("Error fetching workspaces: $e");
+      debugPrint("Error fetching workspaces: $e");
       return [];
     }
   }
@@ -51,7 +51,7 @@ class WorkspaceService {
       }
       return null;
     } catch (e) {
-      print("Error creating workspace: $e");
+      debugPrint("Error creating workspace: $e");
       return null;
     }
   }
@@ -67,7 +67,7 @@ class WorkspaceService {
       }
       return false;
     } catch (e) {
-      print("Error deleting workspace: $e");
+      debugPrint("Error deleting workspace: $e");
       return false;
     }
   }
@@ -85,7 +85,7 @@ class WorkspaceService {
       }
       return '';
     } catch (e) {
-      print("Error fetching notes: $e");
+      debugPrint("Error fetching notes: $e");
       return '';
     }
   }
@@ -108,7 +108,7 @@ class WorkspaceService {
       }
       return false;
     } catch (e) {
-      print("Error saving notes: $e");
+      debugPrint("Error saving notes: $e");
       return false;
     }
   }
@@ -126,7 +126,7 @@ class WorkspaceService {
       }
       return [];
     } catch (e) {
-      print("Error fetching chats: $e");
+      debugPrint("Error fetching chats: $e");
       return [];
     }
   }
@@ -152,7 +152,7 @@ class WorkspaceService {
       }
       return null;
     } catch (e) {
-      print("Error sending chat: $e");
+      debugPrint("Error sending chat: $e");
       return null;
     }
   }
@@ -176,18 +176,18 @@ class WorkspaceService {
         }),
       );
       
-      print("Gemini chat response: ${response.statusCode}");
+      debugPrint("Gemini chat response: ${response.statusCode}");
       
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        print("Chat history count: ${result['history_count']}");
+        debugPrint("Chat history count: ${result['history_count']}");
         return result['result'];
       } else {
-        print("Gemini error: ${response.body}");
+        debugPrint("Gemini error: ${response.body}");
         return "Sorry, I couldn't process your request. Error: ${response.statusCode}";
       }
     } catch (e) {
-      print("Error sending Gemini chat: $e");
+      debugPrint("Error sending Gemini chat: $e");
       return "Sorry, I'm having trouble connecting to the AI service. Please try again.";
     }
   }
@@ -205,7 +205,7 @@ class WorkspaceService {
       }
       return [];
     } catch (e) {
-      print("Error fetching files: $e");
+      debugPrint("Error fetching files: $e");
       return [];
     }
   }
@@ -221,7 +221,7 @@ class WorkspaceService {
       }
       return false;
     } catch (e) {
-      print("Error deleting file: $e");
+      debugPrint("Error deleting file: $e");
       return false;
     }
   }
@@ -256,7 +256,7 @@ class WorkspaceService {
       }
       return false;
     } catch (e) {
-      print("Error uploading file: $e");
+      debugPrint("Error uploading file: $e");
       return false;
     }
   }

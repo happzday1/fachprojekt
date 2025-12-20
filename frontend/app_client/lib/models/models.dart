@@ -165,6 +165,7 @@ class SessionData {
   final List<ExamCategory> examRequirements;
   final List<String> currentClasses;
   final List<DetailedGrade> detailedGrades;
+  final String? userId; // The UUID (hashed or Supabase)
 
   SessionData({
     required this.profileName,
@@ -174,6 +175,7 @@ class SessionData {
     required this.examRequirements,
     required this.currentClasses,
     this.detailedGrades = const [],
+    this.userId,
   });
 
   factory SessionData.fromJson(Map<String, dynamic> json) {
@@ -200,6 +202,7 @@ class SessionData {
       examRequirements: examRequirements,
       currentClasses: currentClasses,
       detailedGrades: detailedGrades,
+      userId: json['user_id'],
     );
   }
 
@@ -234,6 +237,7 @@ class SessionData {
       }).toList(),
       'current_classes': currentClasses,
       'detailed_grades': detailedGrades.map((g) => g.toJson()).toList(),
+      'user_id': userId,
     };
   }
 }

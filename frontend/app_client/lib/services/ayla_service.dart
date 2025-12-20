@@ -35,7 +35,7 @@ class AylaService {
     final url = Uri.parse('$baseUrl/ask_ayla');
     
     try {
-      print("Sending question to Ayla: ${question.substring(0, question.length > 50 ? 50 : question.length)}...");
+      debugPrint("Sending question to Ayla: ${question.substring(0, question.length > 50 ? 50 : question.length)}...");
       
       final response = await http.post(
         url,
@@ -47,7 +47,7 @@ class AylaService {
         }),
       );
 
-      print("Ayla response status: ${response.statusCode}");
+      debugPrint("Ayla response status: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> result = jsonDecode(response.body);
@@ -56,7 +56,7 @@ class AylaService {
           // Check if an event was added
           final eventAdded = result['event_added'];
           if (eventAdded != null) {
-            print("Event was added: ${eventAdded['title']}");
+            debugPrint("Event was added: ${eventAdded['title']}");
           }
           return AylaResponse(
             answer: result['answer'],
@@ -81,7 +81,7 @@ class AylaService {
     } on FormatException {
       throw Exception("Invalid response from Ayla. Please try again.");
     } catch (e) {
-      print("Ayla service error: $e");
+      debugPrint("Ayla service error: $e");
       if (e is Exception) {
         rethrow;
       }
@@ -104,7 +104,7 @@ class AylaService {
       }
       return [];
     } catch (e) {
-      print("Error fetching events: $e");
+      debugPrint("Error fetching events: $e");
       return [];
     }
   }
@@ -122,7 +122,7 @@ class AylaService {
       }
       return false;
     } catch (e) {
-      print("Error deleting event: $e");
+      debugPrint("Error deleting event: $e");
       return false;
     }
   }
