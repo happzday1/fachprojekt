@@ -35,7 +35,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   bool _isChatLoading = false;
   bool _isRecording = false;
   
-  String get _studentId => widget.session.userId ?? widget.session.username;
+  String get _studentId => widget.session.userId ?? widget.session.username.toLowerCase().replaceAll(' ', '_');
 
   @override
   void initState() {

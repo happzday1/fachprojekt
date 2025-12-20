@@ -34,6 +34,21 @@ def username_to_uuid(username: str) -> str:
     namespace = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8')  # DNS namespace
     return str(uuid.uuid5(namespace, username))
 
+def resolve_user_id(identifier: str) -> str:
+    """
+    Resolves the identifier to a UUID.
+    If identifier is already a valid UUID, returns it.
+    Otherwise, generates a deterministic UUIDv5 from the identifier (treated as username).
+    """
+    try:
+        # Check if it's already a valid UUID
+        uuid.UUID(identifier)
+        return identifier
+    except ValueError:
+        pass
+        
+    return username_to_uuid(identifier)
+
 # =============================================================================
 # Configuration & Services
 # =============================================================================
@@ -86,8 +101,8 @@ router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 async def get_workspaces(student_id: str):
     """Get all workspaces for a student."""
     try:
-        # Convert username to UUID for database lookup
-        user_uuid = username_to_uuid(student_id)
+        # Convert username to UUID for database lookup, or use as is if already a UUID
+        user_uuid = resolve_user_id(student_id)
         response = supabase.table("workspaces") \
             .select("id, name, created_at, user_id") \
             .eq("user_id", user_uuid) \
@@ -109,7 +124,7 @@ async def create_workspace(data: WorkspaceCreate):
         # Here we trust the payload for the 'student_id' (user_id)
         
         # Convert username to UUID for database storage
-        user_uuid = username_to_uuid(data.student_id)
+        user_uuid = resolve_user_id(data.student_id)
         ws_data = {
             "user_id": user_uuid,
             "name": data.name
@@ -253,12 +268,7 @@ async def send_chat(workspace_id: str, data: ChatMessage):
         user_id = data.user_id # This can be a UUID or a username
         
         # Robust UUID resolution: if it's already a UUID, keep it. If not, hash it.
-        try:
-            import uuid as uuid_lib
-            uuid_lib.UUID(user_id)
-            user_uuid = user_id
-        except:
-            user_uuid = username_to_uuid(user_id) if user_id and user_id != "anonymous" else None
+        user_uuid = resolve_user_id(user_id) if user_id and user_id != "anonymous" else None
         
         # 1. Ensure a Chat session exists
         chats_resp = supabase.table("chats").select("id").eq("workspace_id", workspace_id).execute()
