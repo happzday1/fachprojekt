@@ -21,6 +21,7 @@ from boss_scraper import BossScraper
 from moodle_scraper import MoodleScraper
 from lsf_scraper import LsfScraper
 from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
+from app.features.email.email_service import fetch_headers, fetch_body
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -478,6 +479,36 @@ async def fetch_grades(creds: Credentials):
     }
     user_grades_cache[key] = response
     return response
+
+@app.post("/email/fetch")
+async def fetch_emails(creds: Credentials):
+    logger.info(f"Email fetch request for {creds.username}")
+    try:
+        emails = fetch_headers(creds.username, creds.password, limit=20)
+        return {"success": True, "emails": emails}
+    except Exception as e:
+        logger.error(f"Email fetch error: {e}")
+        # Map specific exceptions if needed, but for now generic 401/500
+        if "Authentication failed" in str(e):
+            raise HTTPException(status_code=401, detail="Invalid university credentials")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class EmailDetailsRequest(BaseModel):
+    username: str
+    password: str
+    email_id: str
+
+@app.post("/email/details")
+async def get_email_details(req: EmailDetailsRequest):
+    logger.info(f"Email body request for {req.username}, id: {req.email_id}")
+    try:
+        body = fetch_body(req.username, req.password, req.email_id)
+        return {"success": True, "body": body}
+    except Exception as e:
+        logger.error(f"Email body error: {e}")
+        if "Authentication failed" in str(e):
+            raise HTTPException(status_code=401, detail="Invalid university credentials")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

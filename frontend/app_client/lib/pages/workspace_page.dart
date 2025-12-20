@@ -17,7 +17,8 @@ import '../io_helper.dart' if (dart.library.html) '../io_helper_web.dart';
 class WorkspacePage extends StatefulWidget {
   final SessionData session;
   final Function(int)? onNavigate;
-  const WorkspacePage({super.key, required this.session, this.onNavigate});
+  final Map<String, dynamic>? initialWorkspace;
+  const WorkspacePage({super.key, required this.session, this.onNavigate, this.initialWorkspace});
 
   @override
   State<WorkspacePage> createState() => _WorkspacePageState();
@@ -41,6 +42,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void initState() {
     super.initState();
     _loadWorkspaces();
+    if (widget.initialWorkspace != null) {
+      _openWorkspace(widget.initialWorkspace!);
+    }
   }
 
   @override

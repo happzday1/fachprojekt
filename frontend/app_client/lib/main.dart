@@ -81,6 +81,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isSidebarOpen = false;
   bool _isChatOpen = false;
   int _dashboardKey = 0;
+  Map<String, dynamic>? _selectedWorkspace;
 
   void _refreshDashboard() {
     setState(() => _dashboardKey++);
@@ -92,13 +93,37 @@ class _MainScreenState extends State<MainScreen> {
     Widget currentPage;
     switch (_selectedIndex) {
       case 0:
-        currentPage = DashboardPage(key: ValueKey(_dashboardKey), session: widget.session, onNavigate: (index) => setState(() => _selectedIndex = index));
+        currentPage = DashboardPage(
+          key: ValueKey(_dashboardKey), 
+          session: widget.session, 
+          onNavigate: (index) => setState(() => _selectedIndex = index),
+          onWorkspaceSelected: (workspace) {
+            setState(() {
+              _selectedWorkspace = workspace;
+              _selectedIndex = 1;
+            });
+          },
+        );
         break;
       case 1:
-        currentPage = WorkspacePage(session: widget.session, onNavigate: (index) => setState(() => _selectedIndex = index));
+        currentPage = WorkspacePage(
+          session: widget.session, 
+          onNavigate: (index) => setState(() => _selectedIndex = index),
+          initialWorkspace: _selectedWorkspace,
+        );
         break;
       default:
-        currentPage = DashboardPage(key: ValueKey(_dashboardKey), session: widget.session, onNavigate: (index) => setState(() => _selectedIndex = index));
+        currentPage = DashboardPage(
+          key: ValueKey(_dashboardKey), 
+          session: widget.session, 
+          onNavigate: (index) => setState(() => _selectedIndex = index),
+          onWorkspaceSelected: (workspace) {
+            setState(() {
+              _selectedWorkspace = workspace;
+              _selectedIndex = 1;
+            });
+          },
+        );
     }
 
     return Scaffold(
@@ -164,7 +189,11 @@ class _MainScreenState extends State<MainScreen> {
                     icon: Icons.layers_rounded, 
                     label: "Workspace", 
                     isSelected: _selectedIndex == 1, 
-                    onTap: () => setState(() { _selectedIndex = 1; _isSidebarOpen = false; })
+                    onTap: () => setState(() { 
+                      _selectedIndex = 1; 
+                      _isSidebarOpen = false; 
+                      _selectedWorkspace = null; // Reset when clicking sidebar manually
+                    })
                   ),
                   const Spacer(),
                   Padding(

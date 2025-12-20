@@ -7,13 +7,16 @@ import '../session_service.dart';
 import '../models.dart';
 import '../ayla_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/email/email_list_widget.dart';
+import '../workspace_service.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 
 class DashboardPage extends StatefulWidget {
   final SessionData session;
   final Function(int)? onNavigate;
+  final Function(Map<String, dynamic>)? onWorkspaceSelected;
 
-  const DashboardPage({super.key, required this.session, this.onNavigate});
+  const DashboardPage({super.key, required this.session, this.onNavigate, this.onWorkspaceSelected});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -26,12 +29,33 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Deadline> _savedEvents = [];
   bool _isRefreshing = false;
   late SessionData _session;
+  String? _username;
+  String? _password;
+  List<Map<String, dynamic>> _workspaces = [];
 
   @override
   void initState() {
     super.initState();
     _session = widget.session;
+    _loadCredentials();
     _fetchSavedEvents();
+  }
+
+  Future<void> _loadCredentials() async {
+    final creds = await SessionService.loadCredentials();
+    if (creds != null && mounted) {
+      setState(() {
+        _username = creds['username'];
+        _password = creds['password'];
+      });
+      // Fetch workspaces once we have the username
+      final workspaces = await WorkspaceService.getWorkspaces(_username!.toLowerCase().replaceAll(' ', '_'));
+      if (mounted) {
+        setState(() {
+          _workspaces = workspaces;
+        });
+      }
+    }
   }
 
   Future<void> _refreshData() async {
@@ -49,8 +73,12 @@ class _DashboardPageState extends State<DashboardPage> {
         
         if (newSession != null && mounted) {
           await SessionService.saveSession(newSession);
+          // Fetch fresh workspaces
+          final workspaces = await WorkspaceService.getWorkspaces(credentials['username']!.toLowerCase().replaceAll(' ', '_'));
+          
           setState(() {
             _session = newSession;
+            _workspaces = workspaces;
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Dashboard updated successfully!'), backgroundColor: Colors.green),
@@ -176,33 +204,49 @@ class _DashboardPageState extends State<DashboardPage> {
                         const SizedBox(height: 24),
                         
                         // Deadlines & Classes Row
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildSectionCard(
-                                title: "Deadlines",
-                                icon: Icons.timer_outlined,
-                                color: Colors.redAccent,
-                                child: _UpcomingListCompact(
-                                  deadlines: realDeadlines,
-                                  onTap: (d) => _showEventDetails(CalendarEvent.fromDeadline(d)),
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _buildSectionCard(
+                                  title: "Deadlines",
+                                  icon: Icons.timer_outlined,
+                                  color: Colors.redAccent,
+                                  child: _UpcomingListCompact(
+                                    deadlines: realDeadlines,
+                                    onTap: (d) => _showEventDetails(CalendarEvent.fromDeadline(d)),
+                                  ),
+                                  isDark: isDark,
                                 ),
-                                isDark: isDark,
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: _buildSectionCard(
-                                title: "Classes",
-                                icon: Icons.auto_stories_rounded,
-                                color: const Color(0xFF38B6FF),
-                                child: _CurrentClassesListCompact(classes: session.currentClasses),
-                                isDark: isDark,
+                              const SizedBox(width: 24),
+                              Expanded(
+                                child: _buildSectionCard(
+                                  title: "Classes",
+                                  icon: Icons.auto_stories_rounded,
+                                  color: const Color(0xFF38B6FF),
+                                  child: _CurrentClassesListCompact(classes: session.currentClasses),
+                                  isDark: isDark,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(height: 24),
+                        // University Emails Section
+                        if (_username != null && _password != null)
+                          _buildSectionCard(
+                            title: "University Emails",
+                            icon: Icons.email_outlined,
+                            color: Colors.blueAccent,
+                            child: EmailListWidget(
+                              username: _username!,
+                              password: _password!,
+                              isDark: isDark,
+                            ),
+                            isDark: isDark,
+                          ),
                       ],
                     ),
                   ),
@@ -250,8 +294,22 @@ class _DashboardPageState extends State<DashboardPage> {
                           icon: Icons.verified_rounded,
                           color: Colors.tealAccent,
                           child: SizedBox(
-                            height: 140, // Height for roughly 3 items
+                            height: 120, // Slightly reduced to make room
                             child: _PassedExamsList(examRequirements: session.examRequirements),
+                          ),
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildSectionCard(
+                          title: "Workspaces",
+                          icon: Icons.layers_rounded,
+                          color: Colors.amber,
+                          child: SizedBox(
+                            height: 207, // Adjusted to align with Emails bottom
+                            child: _WorkspacesListCompact(
+                              workspaces: _workspaces,
+                              onTap: widget.onWorkspaceSelected,
+                            ),
                           ),
                           isDark: isDark,
                         ),
@@ -293,16 +351,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildStatSimple("Best Grade", session.ectsData.bestGrade?.toStringAsFixed(2) ?? "–", Icons.military_tech_rounded, Colors.amber, isDark),
                       ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Divider(color: Colors.white10),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildMiniStat("Courses", session.ectsData.coursesCount.toString(), isDark),
-                    _buildMiniStat("Degree", session.ectsData.degreeProgram ?? "CS", isDark),
                   ],
                 ),
               ],
@@ -492,14 +540,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildMiniStat(String label, String value, bool isDark) {
-    return Column(
-      children: [
-        Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : Colors.black87)),
-        Text(label, style: GoogleFonts.inter(fontSize: 9, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w600, letterSpacing: 1)),
-      ],
-    );
-  }
 
   Widget _buildSectionCard({required String title, required IconData icon, required Color color, required Widget child, required bool isDark}) {
     return GlassContainer(
@@ -674,62 +714,84 @@ class _UpcomingListCompact extends StatelessWidget {
     if (sorted.isEmpty) {
       return Center(child: Text("All caught up!", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)));
     }
-    return Column(
-      children: sorted.take(5).map((deadline) {
-        try {
-          final deadlineDate = DateTime.parse(deadline.date);
-          final daysUntil = deadlineDate.difference(DateTime.now()).inDays;
-          Color urgencyColor = daysUntil <= 1 ? Colors.redAccent : (daysUntil <= 3 ? Colors.orangeAccent : Colors.tealAccent);
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: InkWell(
-              onTap: () => onTap?.call(deadline),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+    final ScrollController controller = ScrollController();
+
+    return SizedBox(
+      height: 200, 
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          scrollbarTheme: ScrollbarThemeData(
+            thumbColor: WidgetStateProperty.all(isDark ? Colors.white24 : Colors.black12),
+            radius: const Radius.circular(8),
+            thickness: WidgetStateProperty.all(4),
+          ),
+        ),
+        child: Scrollbar(
+          controller: controller,
+          thumbVisibility: true,
+          child: ListView.builder(
+            controller: controller,
+            padding: const EdgeInsets.only(right: 8), 
+            itemCount: sorted.length,
+            itemBuilder: (context, index) {
+              final deadline = sorted[index];
+              try {
+                final deadlineDate = DateTime.parse(deadline.date);
+                final daysUntil = deadlineDate.difference(DateTime.now()).inDays;
+                Color urgencyColor = daysUntil <= 1 ? Colors.redAccent : (daysUntil <= 3 ? Colors.orangeAccent : Colors.tealAccent);
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: InkWell(
+                    onTap: () => onTap?.call(deadline),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            deadline.title, 
-                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  deadline.title, 
+                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  deadline.course, 
+                                  style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            deadline.course, 
-                            style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                            child: Text(
+                              daysUntil == 0 ? "Today" : (daysUntil == 1 ? "Tomorrow" : "$daysUntil days"), 
+                              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: urgencyColor)
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: urgencyColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                      child: Text(
-                        daysUntil == 0 ? "Today" : (daysUntil == 1 ? "Tomorrow" : "$daysUntil days"), 
-                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: urgencyColor)
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        } catch (e) { return const SizedBox.shrink(); }
-      }).toList(),
+                  ),
+                );
+              } catch (e) { return const SizedBox.shrink(); }
+            },
+          ),
+        ),
+      ),
     );
   }
 }
@@ -810,7 +872,7 @@ class _CurrentClassesListCompact extends StatelessWidget {
     final ScrollController controller = ScrollController();
     
     return SizedBox(
-      height: 180, // Height for roughly 3 items
+      height: 200, // Height for roughly 3.5 items
       child: Theme(
         data: Theme.of(context).copyWith(
           scrollbarTheme: ScrollbarThemeData(
@@ -901,6 +963,77 @@ class _PassedExamsList extends StatelessWidget {
                   )
                 ]
               )
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspacesListCompact extends StatelessWidget {
+  final List<Map<String, dynamic>> workspaces;
+  final Function(Map<String, dynamic>)? onTap;
+  const _WorkspacesListCompact({required this.workspaces, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (workspaces.isEmpty) {
+      return Center(
+        child: Text(
+          "No workspaces yet", 
+          style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withOpacity(0.24), fontSize: 13)
+        )
+      );
+    }
+    final ScrollController controller = ScrollController();
+    
+    return Theme(
+      data: Theme.of(context).copyWith(
+        scrollbarTheme: ScrollbarThemeData(
+          thumbColor: WidgetStateProperty.all(isDark ? Colors.white24 : Colors.black12),
+          radius: const Radius.circular(8),
+          thickness: WidgetStateProperty.all(4),
+        ),
+      ),
+      child: Scrollbar(
+        controller: controller,
+        thumbVisibility: true,
+        child: ListView.builder(
+          controller: controller,
+          padding: const EdgeInsets.only(right: 8), // Room for scrollbar
+          itemCount: workspaces.length,
+          itemBuilder: (context, index) {
+            final w = workspaces[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8), 
+              child: InkWell(
+                onTap: () => onTap?.call(w),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.02), 
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+                  ), 
+                  child: Row(
+                    children: [
+                      const Icon(Icons.folder_rounded, size: 14, color: Colors.amber), 
+                      const SizedBox(width: 12), 
+                      Expanded(
+                        child: Text(
+                          w['name'] ?? 'Untitled', 
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withOpacity(0.7)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      )
+                    ]
+                  )
+                ),
+              ),
             );
           },
         ),
