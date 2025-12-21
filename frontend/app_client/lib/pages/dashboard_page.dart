@@ -9,6 +9,7 @@ import '../services/ayla_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/email/email_list_widget.dart';
 import '../services/workspace_service.dart';
+import '../utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 
@@ -154,8 +155,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : const Color(0xFF1E293B),
-                        letterSpacing: -1,
+                        color: DesignTokens.textPrimary(isDark),
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -163,7 +164,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       "Welcome back, ${session.profileName.split(' ')[0]}",
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: isDark ? Colors.white54 : Colors.black54,
+                        color: DesignTokens.textSec(isDark),
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -179,7 +180,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 else
                   IconButton(
                     tooltip: "Refresh Data",
-                    icon: Icon(Icons.refresh_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20),
+                    icon: Icon(Icons.refresh_rounded, color: DesignTokens.textTert(isDark), size: 20),
                     onPressed: _refreshData,
                   ),
               ],
@@ -215,7 +216,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 child: _buildSectionCard(
                                   title: "Deadlines",
                                   icon: Icons.timer_outlined,
-                                  color: Colors.redAccent,
+                                  color: DesignTokens.signalYellow,
                                   child: _UpcomingListCompact(
                                     deadlines: realDeadlines,
                                     onTap: (d) => _showEventDetails(CalendarEvent.fromDeadline(d)),
@@ -228,7 +229,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 child: _buildSectionCard(
                                   title: "Classes",
                                   icon: Icons.auto_stories_rounded,
-                                  color: const Color(0xFF38B6FF),
+                                  color: DesignTokens.mutedBlue,
                                   child: _CurrentClassesListCompact(classes: session.currentClasses),
                                   isDark: isDark,
                                 ),
@@ -242,7 +243,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           _buildSectionCard(
                             title: "University Emails",
                             icon: Icons.email_outlined,
-                            color: Colors.blueAccent,
+                            color: DesignTokens.mutedBlue,
                             child: EmailListWidget(
                               username: _username!,
                               password: _password!,
@@ -263,7 +264,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildSectionCard(
                           title: "Calendar",
                           icon: Icons.calendar_today_rounded,
-                          color: Colors.amber,
+                          color: DesignTokens.braunOrange,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -295,7 +296,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildSectionCard(
                           title: "Exams",
                           icon: Icons.verified_rounded,
-                          color: Colors.tealAccent,
+                          color: DesignTokens.sageGreen,
                           child: SizedBox(
                             height: 120, // Slightly reduced to make room
                             child: _PassedExamsList(examRequirements: session.examRequirements),
@@ -306,7 +307,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         _buildSectionCard(
                           title: "Workspaces",
                           icon: Icons.layers_rounded,
-                          color: Colors.amber,
+                          color: DesignTokens.braunOrange,
                           child: SizedBox(
                             height: 207, // Adjusted to align with Emails bottom
                             child: _WorkspacesListCompact(
@@ -348,9 +349,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _buildStatSimple("Average Grade", session.ectsData.averageGrade?.toStringAsFixed(2) ?? "–", Icons.auto_graph_rounded, Colors.orangeAccent, isDark),
+                        _buildStatSimple("Average Grade", session.ectsData.averageGrade?.toStringAsFixed(2) ?? "–", Icons.auto_graph_rounded, DesignTokens.braunOrange, isDark),
                         const SizedBox(height: 20),
-                        _buildStatSimple("Best Grade", session.ectsData.bestGrade?.toStringAsFixed(2) ?? "–", Icons.military_tech_rounded, Colors.amber, isDark),
+                        _buildStatSimple("Best Grade", session.ectsData.bestGrade?.toStringAsFixed(2) ?? "–", Icons.military_tech_rounded, DesignTokens.sageGreen, isDark),
                       ],
                     ),
                   ],
@@ -372,10 +373,10 @@ class _DashboardPageState extends State<DashboardPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.indigoAccent.withValues(alpha: 0.1),
+              color: DesignTokens.braunOrange.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.auto_awesome_rounded, color: Colors.indigoAccent, size: 24),
+            child: Icon(Icons.auto_awesome_rounded, color: DesignTokens.braunOrange, size: 24),
           ),
           const SizedBox(width: 24),
           Expanded(
@@ -387,14 +388,14 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    color: DesignTokens.textPrimary(isDark),
                   ),
                 ),
                 Text(
                   "Generate a tailored schedule based on your upcoming deadlines.",
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: isDark ? Colors.white54 : Colors.black54,
+                    color: DesignTokens.textSec(isDark),
                   ),
                 ),
               ],
@@ -402,12 +403,12 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(width: 16),
           _isGeneratingPlan
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.indigoAccent))
+              ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: DesignTokens.braunOrange))
               : ElevatedButton(
                   onPressed: _generateStudyPlan,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigoAccent.withValues(alpha: 0.1),
-                    foregroundColor: Colors.indigoAccent,
+                    backgroundColor: DesignTokens.braunOrange,
+                    foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -504,21 +505,22 @@ class _DashboardPageState extends State<DashboardPage> {
             style: GoogleFonts.inter(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF1E293B),
+              color: DesignTokens.textPrimary(isDark),
             ),
           ),
           Text(
             "ECTS",
             style: GoogleFonts.inter(
               fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white38 : Colors.black38,
+              fontWeight: FontWeight.w700,
+              color: DesignTokens.textTert(isDark),
+              letterSpacing: 1.2,
             ),
           ),
         ],
       ),
-      backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-      progressColor: const Color(0xFF38B6FF),
+      backgroundColor: DesignTokens.border(isDark),
+      progressColor: DesignTokens.sageGreen,
     );
   }
 
@@ -528,14 +530,46 @@ class _DashboardPageState extends State<DashboardPage> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(value, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF1E293B))),
-            Text(label, style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w600)),
+            // Split-flap style value display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0A0A0A) : const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                value,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 9,
+                color: DesignTokens.textTert(isDark),
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+              ),
+            ),
           ],
         ),
         const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 16),
         ),
       ],
@@ -559,8 +593,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white54 : Colors.black54,
-                  letterSpacing: 1.5,
+                  color: DesignTokens.textTert(isDark),
+                  letterSpacing: 1.8,
                 ),
               ),
             ],
@@ -581,9 +615,9 @@ class _DashboardPageState extends State<DashboardPage> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+          color: DesignTokens.surface(isDark).withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+          border: Border.all(color: DesignTokens.border(isDark)),
         ),
         child: Row(
           children: [
@@ -597,11 +631,11 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(event.title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+                  Text(event.title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textPrimary(isDark))),
                   const SizedBox(height: 2),
                   Text(
                     "${DateFormat('HH:mm').format(event.date)} ${event.course ?? ''}", 
-                    style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38)
+                    style: GoogleFonts.inter(fontSize: 11, color: DesignTokens.textTert(isDark))
                   ),
                 ],
               ),
@@ -618,19 +652,19 @@ class _DashboardPageState extends State<DashboardPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1A1A2E) : Colors.white,
+        backgroundColor: DesignTokens.surface(isDark),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (event.platform == 'Ayla' ? Colors.redAccent : const Color(0xFF38B6FF)).withValues(alpha: 0.1),
+                color: (event.platform == 'Ayla' ? DesignTokens.softRed : DesignTokens.braunOrange).withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 event.platform == 'Ayla' ? Icons.assignment_rounded : Icons.calendar_today_rounded,
-                color: event.platform == 'Ayla' ? Colors.redAccent : const Color(0xFF38B6FF),
+                color: event.platform == 'Ayla' ? DesignTokens.softRed : DesignTokens.braunOrange,
                 size: 20,
               ),
             ),
@@ -677,7 +711,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF38B6FF),
+                backgroundColor: DesignTokens.braunOrange,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -692,15 +726,15 @@ class _DashboardPageState extends State<DashboardPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+        Icon(icon, size: 16, color: DesignTokens.textTert(isDark)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              Text(label.toUpperCase(), style: GoogleFonts.inter(fontSize: 9, color: DesignTokens.textTert(isDark), fontWeight: FontWeight.w700, letterSpacing: 1.2)),
               const SizedBox(height: 2),
-              Text(value, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87, fontWeight: FontWeight.w500)),
+              Text(value, style: GoogleFonts.inter(fontSize: 14, color: DesignTokens.textPrimary(isDark), fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -722,7 +756,7 @@ class _UpcomingListCompact extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (sorted.isEmpty) {
-      return Center(child: Text("All caught up!", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)));
+      return Center(child: Text("All caught up!", style: GoogleFonts.inter(color: DesignTokens.textTert(isDark), fontSize: 13)));
     }
     final ScrollController controller = ScrollController();
 
@@ -748,7 +782,7 @@ class _UpcomingListCompact extends StatelessWidget {
               try {
                 final deadlineDate = DateTime.parse(deadline.date);
                 final daysUntil = deadlineDate.difference(DateTime.now()).inDays;
-                Color urgencyColor = daysUntil <= 1 ? Colors.redAccent : (daysUntil <= 3 ? Colors.orangeAccent : Colors.tealAccent);
+                Color urgencyColor = daysUntil <= 1 ? DesignTokens.softRed : (daysUntil <= 3 ? DesignTokens.signalYellow : DesignTokens.sageGreen);
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: InkWell(
@@ -757,9 +791,9 @@ class _UpcomingListCompact extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                        color: DesignTokens.surface(isDark).withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                        border: Border.all(color: DesignTokens.border(isDark)),
                       ),
                       child: Row(
                         children: [
@@ -769,14 +803,14 @@ class _UpcomingListCompact extends StatelessWidget {
                               children: [
                                 Text(
                                   deadline.title, 
-                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
+                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: DesignTokens.textPrimary(isDark)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   deadline.course, 
-                                  style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white38 : Colors.black38),
+                                  style: GoogleFonts.inter(fontSize: 11, color: DesignTokens.textTert(isDark)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -852,21 +886,21 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
       eventLoader: (day) => events[DateTime(day.year, day.month, day.day)] ?? [],
       calendarStyle: CalendarStyle(
         outsideDaysVisible: false,
-        weekendTextStyle: GoogleFonts.inter(color: Colors.redAccent.withValues(alpha: 0.6), fontSize: 13),
-        defaultTextStyle: GoogleFonts.inter(fontSize: 13, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
-        todayDecoration: BoxDecoration(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1), shape: BoxShape.circle),
-        todayTextStyle: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
-        selectedDecoration: const BoxDecoration(color: Color(0xFF38B6FF), shape: BoxShape.circle),
+        weekendTextStyle: GoogleFonts.inter(color: DesignTokens.softRed.withValues(alpha: 0.7), fontSize: 13),
+        defaultTextStyle: GoogleFonts.inter(fontSize: 13, color: DesignTokens.textSec(isDark)),
+        todayDecoration: BoxDecoration(color: DesignTokens.border(isDark), shape: BoxShape.circle),
+        todayTextStyle: GoogleFonts.inter(color: DesignTokens.textPrimary(isDark), fontWeight: FontWeight.bold),
+        selectedDecoration: BoxDecoration(color: DesignTokens.braunOrange, shape: BoxShape.circle),
         selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        markerDecoration: const BoxDecoration(color: Color(0xFF38B6FF), shape: BoxShape.circle),
+        markerDecoration: BoxDecoration(color: DesignTokens.braunOrange, shape: BoxShape.circle),
         markerSize: 4,
       ),
       headerStyle: HeaderStyle(
         formatButtonVisible: false, 
         titleCentered: true, 
-        titleTextStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF1E293B)),
-        leftChevronIcon: Icon(Icons.chevron_left_rounded, color: isDark ? Colors.white38 : Colors.black38),
-        rightChevronIcon: Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white38 : Colors.black38),
+        titleTextStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary(isDark)),
+        leftChevronIcon: Icon(Icons.chevron_left_rounded, color: DesignTokens.textTert(isDark)),
+        rightChevronIcon: Icon(Icons.chevron_right_rounded, color: DesignTokens.textTert(isDark)),
       ),
     );
   }
@@ -879,7 +913,7 @@ class _CurrentClassesListCompact extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (classes.isEmpty) return Center(child: Text("No active classes", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)));
+    if (classes.isEmpty) return Center(child: Text("No active classes", style: GoogleFonts.inter(color: DesignTokens.textTert(isDark), fontSize: 13)));
     
     final ScrollController controller = ScrollController();
     
@@ -906,15 +940,15 @@ class _CurrentClassesListCompact extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12), 
                 padding: const EdgeInsets.all(16), 
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02), 
+                  color: DesignTokens.surface(isDark).withValues(alpha: 0.5), 
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                  border: Border.all(color: DesignTokens.border(isDark)),
                 ), 
                 child: Row(
                   children: [
-                    Icon(Icons.bookmark_rounded, size: 16, color: const Color(0xFF38B6FF).withValues(alpha: 0.6)), 
+                    Icon(Icons.bookmark_rounded, size: 16, color: DesignTokens.mutedBlue.withValues(alpha: 0.7)), 
                     const SizedBox(width: 16), 
-                    Expanded(child: Text(c, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.black87)))
+                    Expanded(child: Text(c, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: DesignTokens.textPrimary(isDark))))
                   ]
                 )
               );
@@ -934,7 +968,7 @@ class _PassedExamsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final passed = examRequirements.expand((c) => c.exams).where((e) => e.passed).toList();
-    if (passed.isEmpty) return Center(child: Text("No results found", style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)));
+    if (passed.isEmpty) return Center(child: Text("No results found", style: GoogleFonts.inter(color: DesignTokens.textTert(isDark), fontSize: 13)));
     final ScrollController controller = ScrollController();
     
     return Theme(
@@ -958,17 +992,17 @@ class _PassedExamsList extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8), 
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02), 
+                color: DesignTokens.surface(isDark).withValues(alpha: 0.5), 
                 borderRadius: BorderRadius.circular(12),
               ), 
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, size: 14, color: Colors.tealAccent), 
+                  Icon(Icons.check_circle_rounded, size: 14, color: DesignTokens.sageGreen), 
                   const SizedBox(width: 12), 
                   Expanded(
                     child: Text(
                       e.name, 
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: DesignTokens.textSec(isDark)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     )
@@ -995,7 +1029,7 @@ class _WorkspacesListCompact extends StatelessWidget {
       return Center(
         child: Text(
           "No workspaces yet", 
-          style: GoogleFonts.inter(color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.24), fontSize: 13)
+          style: GoogleFonts.inter(color: DesignTokens.textTert(isDark), fontSize: 13)
         )
       );
     }
@@ -1026,18 +1060,18 @@ class _WorkspacesListCompact extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02), 
+                    color: DesignTokens.surface(isDark).withValues(alpha: 0.5), 
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                    border: Border.all(color: DesignTokens.border(isDark)),
                   ), 
                   child: Row(
                     children: [
-                      const Icon(Icons.folder_rounded, size: 14, color: Colors.amber), 
+                      Icon(Icons.folder_rounded, size: 14, color: DesignTokens.braunOrange), 
                       const SizedBox(width: 12), 
                       Expanded(
                         child: Text(
                           w['name'] ?? 'Untitled', 
-                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: DesignTokens.textSec(isDark)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         )

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'models/models.dart';
 import 'services/session_service.dart';
 import 'widgets/glass_container.dart';
+import 'utils/design_tokens.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/workspace_page.dart';
@@ -29,37 +30,41 @@ class Ayla extends StatelessWidget {
           title: 'Ayla',
           debugShowCheckedModeBanner: false,
           themeMode: currentMode,
+          // Neo-Analog Light Theme (Warm Vanilla / Dieter Rams inspired)
           theme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.light,
-            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+            scaffoldBackgroundColor: const Color(0xFFF5F5F0), // Soft Vanilla
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF1E293B),
-              secondary: Color(0xFF64748B),
-              surface: Colors.white,
-              onSurface: Color(0xFF1E293B),
+              primary: Color(0xFF1A1A1A), // Braun Black
+              secondary: Color(0xFF5A5A55),
+              tertiary: Color(0xFFED8008), // Braun Orange
+              surface: Color(0xFFFAFAF7),
+              onSurface: Color(0xFF1A1A1A),
             ),
             textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme).apply(
-              bodyColor: const Color(0xFF1E293B),
-              displayColor: const Color(0xFF1E293B),
+              bodyColor: const Color(0xFF1A1A1A),
+              displayColor: const Color(0xFF1A1A1A),
             ),
-            iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
+            iconTheme: const IconThemeData(color: Color(0xFF5A5A55)),
           ),
+          // Neo-Analog Dark Theme (Warm Charcoal)
           darkTheme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF020617),
+            scaffoldBackgroundColor: const Color(0xFF1C1C1A), // Warm Charcoal
             colorScheme: const ColorScheme.dark(
-              primary: Colors.white,
-              secondary: Color(0xFF94A3B8),
-              surface: Color(0xFF0F172A),
-              onSurface: Colors.white,
+              primary: Color(0xFFF0F0EC),
+              secondary: Color(0xFFA0A098),
+              tertiary: Color(0xFFED8008), // Braun Orange
+              surface: Color(0xFF2A2A28),
+              onSurface: Color(0xFFF0F0EC),
             ),
             textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme).apply(
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
+              bodyColor: const Color(0xFFF0F0EC),
+              displayColor: const Color(0xFFF0F0EC),
             ),
-            iconTheme: const IconThemeData(color: Colors.white),
+            iconTheme: const IconThemeData(color: Color(0xFFA0A098)),
           ),
           home: const LoginPage(),
         );
@@ -149,7 +154,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: 0,
               opacity: isDark ? 0.08 : 0.4,
               blur: 20,
-              border: Border(right: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))),
+              border: Border(right: BorderSide(color: DesignTokens.border(isDark))),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -158,20 +163,27 @@ class _MainScreenState extends State<MainScreen> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF38B6FF).withValues(alpha: 0.1),
+                            color: DesignTokens.braunOrange,
                             borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: DesignTokens.braunOrange.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 20),
+                          child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Text(
                           "Ayla", 
                           style: GoogleFonts.inter(
-                            fontSize: 22, 
-                            fontWeight: FontWeight.w700, 
-                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                            fontSize: 24, 
+                            fontWeight: FontWeight.w800, 
+                            color: DesignTokens.textPrimary(isDark),
                             letterSpacing: -0.5,
                           )
                         ),
@@ -286,25 +298,25 @@ class _SidebarActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: isDestructive 
-              ? Colors.redAccent.withValues(alpha: 0.05) 
-              : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
+              ? DesignTokens.softRed.withValues(alpha: 0.08) 
+              : DesignTokens.surface(isDark),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isDestructive 
-                ? Colors.redAccent.withValues(alpha: 0.1) 
-                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))
+                ? DesignTokens.softRed.withValues(alpha: 0.15) 
+                : DesignTokens.border(isDark)
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: isDestructive ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black54)),
+            Icon(icon, size: 18, color: isDestructive ? DesignTokens.softRed : DesignTokens.textTert(isDark)),
             const SizedBox(width: 12),
             Text(
               label, 
               style: GoogleFonts.inter(
                 fontSize: 13, 
                 fontWeight: FontWeight.w500, 
-                color: isDestructive ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black54)
+                color: isDestructive ? DesignTokens.softRed : DesignTokens.textSec(isDark)
               )
             ),
           ],

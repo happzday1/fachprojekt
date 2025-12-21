@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../utils/design_tokens.dart';
 
+/// Neo-Analog Glass Container
+/// Warm, paper-like cards with soft tactile shadows
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double? width;
@@ -20,9 +23,9 @@ class GlassContainer extends StatelessWidget {
     this.height,
     this.padding,
     this.margin,
-    this.borderRadius = 20,
-    this.blur = 15,
-    this.opacity = 0.08,
+    this.borderRadius = 24,
+    this.blur = 0, // Reduced blur for cleaner look
+    this.opacity = 1.0,
     this.color,
     this.border,
   });
@@ -30,7 +33,9 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultColor = isDark ? Colors.white : Colors.black;
+    
+    // Neo-Analog surface colors
+    final surfaceColor = color ?? DesignTokens.surface(isDark);
     
     return Container(
       width: width,
@@ -38,39 +43,69 @@ class GlassContainer extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
+        // Soft, diffused shadows for tactile depth
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            color: isDark 
+                ? Colors.black.withValues(alpha: 0.35) 
+                : Colors.black.withValues(alpha: 0.06),
             blurRadius: 24,
-            spreadRadius: -4,
-            offset: const Offset(0, 12),
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
+          BoxShadow(
+            color: isDark 
+                ? Colors.black.withValues(alpha: 0.2) 
+                : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
+          ),
+          // Subtle inner glow for depth (light mode only)
+          if (!isDark)
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.8),
+              blurRadius: 0,
+              spreadRadius: -1,
+              offset: const Offset(0, -1),
+            ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: color ?? defaultColor.withValues(alpha: opacity),
-              borderRadius: BorderRadius.circular(borderRadius),
-              border: border ?? 
-                  Border.all(color: defaultColor.withValues(alpha: isDark ? 0.08 : 0.05), width: 1.0),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  (color ?? defaultColor).withValues(alpha: opacity + (isDark ? 0.02 : 0.01)),
-                  (color ?? defaultColor).withValues(alpha: isDark ? 0.01 : 0.02),
-                ],
-              ),
-            ),
-            child: child,
-          ),
+        child: blur > 0 
+            ? BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                child: _buildContent(isDark, surfaceColor),
+              )
+            : _buildContent(isDark, surfaceColor),
+      ),
+    );
+  }
+
+  Widget _buildContent(bool isDark, Color surfaceColor) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: surfaceColor.withValues(alpha: opacity),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: border ?? Border.all(
+          color: DesignTokens.border(isDark),
+          width: 1.0,
+        ),
+        // Subtle gradient for paper texture feel
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            surfaceColor,
+            isDark 
+                ? surfaceColor.withValues(alpha: 0.95)
+                : Color.lerp(surfaceColor, const Color(0xFFEFECE5), 0.05)!,
+          ],
         ),
       ),
+      child: child,
     );
   }
 }

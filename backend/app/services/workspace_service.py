@@ -7,7 +7,7 @@ import logging
 from supabase import create_client, Client as SupabaseClient
 from google import genai
 from google.genai import types
-from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
+from backend_config import MODEL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,12 @@ class WorkspaceService:
                 u_uuid = username_to_uuid(user_id)
                 academic_context = await service.get_academic_summary(u_uuid)
             
-            full_sys_instr = f"{academic_context}\n\n{SYSTEM_INSTRUCTION}"
+            # Workspace cache system instruction (file-focused, enforce LaTeX)
+            workspace_cache_instr = """You are Ayla, helping students analyze their study materials.
+Focus on the uploaded documents. 
+CRITICAL: Use LaTeX for ALL math. Write $\\frac{a}{b}$ not a/b. Write $\\int f(x) dx$ not integral f(x) dx.
+For display equations use: $$\\int \\frac{4x}{x^4-1} dx = answer$$"""
+            full_sys_instr = f"{academic_context}\n\n{workspace_cache_instr}"
 
             cache = await self.gemini_client.aio.caches.create(
                 model=MODEL_NAME,

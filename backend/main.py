@@ -20,7 +20,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.scrapers.boss_scraper import BossScraper
 from app.scrapers.moodle_scraper import MoodleScraper
 from app.scrapers.lsf_scraper import LsfScraper
-from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
+from backend_config import MODEL_NAME
 from app.features.email.email_service import fetch_headers, fetch_body
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -38,7 +38,7 @@ from google.genai import errors as genai_errors
 
 # Workspace API router
 from app.routers.workspace_router import router as workspace_router, username_to_uuid
-from app.routers import stream_chat, webhooks, audio_chat
+from app.routers import stream_chat, webhooks, audio_chat, assistant_router
 from app.auth import supabase_auth
 from app.services.academic_service import AcademicService
 from app.services.gemini_engine import get_supabase
@@ -102,14 +102,32 @@ user_login_cache = TTLCache(maxsize=500, ttl=USER_CACHE_TTL)
 user_grades_cache = TTLCache(maxsize=500, ttl=USER_CACHE_TTL)
 from app.utils.webdriver_utils import get_cached_driver_path, DEBUG_DIR
 
-def get_cache_key(username: str) -> str:
-    return hashlib.sha256(username.encode()).hexdigest()[:16]
+def get_cache_key(username: str, password: str = "") -> str:
+    """Generate cache key from username and password hash.
+    
+    This ensures that cached session data is only returned when
+    the exact same credentials are provided, preventing auth bypass.
+    """
+    combined = f"{username}:{password}"
+    return hashlib.sha256(combined.encode()).hexdigest()[:16]
 
-def invalidate_user_cache(username: str):
-    key = get_cache_key(username)
-    if key in user_login_cache: del user_login_cache[key]
-    if key in user_grades_cache: del user_grades_cache[key]
-    logger.info(f"Cache invalidated for: {username}")
+def invalidate_user_cache(username: str, password: str = ""):
+    """Invalidate cached data for a user.
+    
+    If password is provided, invalidates the specific credential cache.
+    If not provided, clears ALL cache entries (for full refresh).
+    """
+    if password:
+        key = get_cache_key(username, password)
+        if key in user_login_cache: del user_login_cache[key]
+        if key in user_grades_cache: del user_grades_cache[key]
+        logger.info(f"Cache invalidated for: {username}")
+    else:
+        # Clear all cached entries for this user by clearing entire cache
+        # This is a fallback when password is unknown
+        user_login_cache.clear()
+        user_grades_cache.clear()
+        logger.info(f"All caches cleared (force refresh for: {username})")
 
 # ============================================
 # LIFESPAN & APP SETUP
@@ -149,6 +167,7 @@ app.include_router(workspace_router)
 app.include_router(stream_chat.router)
 app.include_router(webhooks.router)
 app.include_router(audio_chat.router)
+app.include_router(assistant_router.router)
 
 
 # ============================================
@@ -244,7 +263,7 @@ async def ask_ayla(
             model=MODEL_NAME,
             contents=full_prompt,
             config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
+                system_instruction="You are Ayla, a friendly AI assistant for TU Dortmund students. Help with courses, exams, and academic questions. Use LaTeX for math: $\\frac{a}{b}$",
                 temperature=0.7,
             )
         )
@@ -317,7 +336,7 @@ async def chat_with_memory(
             model=MODEL_NAME,
             contents=full_prompt,
             config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
+                system_instruction="You are Ayla, a friendly AI assistant for TU Dortmund students. Help with courses, exams, and academic questions. Use LaTeX for math: $\\frac{a}{b}$",
                 max_output_tokens=request.max_tokens,
                 temperature=0.7,
             )
@@ -349,10 +368,12 @@ async def login(creds: Credentials):
     logger.info(f"Login request for {creds.username}")
     
     if creds.force_refresh:
-        invalidate_user_cache(creds.username)
+        invalidate_user_cache(creds.username, creds.password)
     
-    key = get_cache_key(creds.username)
+    # Cache key includes password hash to prevent auth bypass
+    key = get_cache_key(creds.username, creds.password)
     if key in user_login_cache:
+        logger.info(f"Returning cached login data for {creds.username}")
         return user_login_cache[key]
     
     # Combined Logic: Single browser session for verification and scraping
@@ -416,8 +437,10 @@ async def login(creds: Credentials):
 async def fetch_grades(creds: Credentials):
     logger.info(f"fetch-grades request for {creds.username}")
     
-    key = get_cache_key(creds.username)
+    # Cache key includes password hash to prevent auth bypass
+    key = get_cache_key(creds.username, creds.password)
     if not creds.force_refresh and key in user_grades_cache:
+        logger.info(f"Returning cached grades data for {creds.username}")
         return user_grades_cache[key]
         
     scraper = BossScraper(creds.username, creds.password, creds.totp_secret)

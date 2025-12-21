@@ -120,14 +120,65 @@ class MoodleScraper:
             
             self.driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], #loginButton_0").click()
             
-            # Wait for return
-            self.wait.until(EC.url_contains("moodle.tu-dortmund.de"))
+            # Wait for redirect (timeout indicates potential failure)
+            time.sleep(3)  # Give SSO time to process
             
-            if "login failed" in self.driver.page_source.lower() or "anmeldung fehlgeschlagen" in self.driver.page_source.lower():
-                logger.warning("SSO Login failed: Invalid credentials")
+            # Check for common authentication failure indicators
+            page_source_lower = self.driver.page_source.lower()
+            current_url = self.driver.current_url.lower()
+            
+            # List of error indicators that suggest failed login
+            error_indicators = [
+                "login failed",
+                "anmeldung fehlgeschlagen", 
+                "authentication failed",
+                "invalid credentials",
+                "ungültige anmeldedaten",
+                "falsches passwort",
+                "wrong password",
+                "incorrect password",
+                "benutzername oder passwort",
+                "username or password",
+                "anmeldung nicht erfolgreich",
+                "login unsuccessful",
+                "zugriff verweigert",
+                "access denied"
+            ]
+            
+            for indicator in error_indicators:
+                if indicator in page_source_lower:
+                    logger.warning(f"SSO Login failed: Found error indicator '{indicator}'")
+                    self._dump_debug_info("moodle_auth_failed")
+                    return False
+            
+            # Check if still on SSO page (hasn't redirected properly)
+            if "sso.itmc" in current_url:
+                # If still on SSO and username field is visible, login likely failed
+                try:
+                    user_field = self.driver.find_element(By.CSS_SELECTOR, "input#username, input#idToken1")
+                    if user_field.is_displayed():
+                        logger.warning("SSO Login failed: Still on SSO page with visible login form")
+                        self._dump_debug_info("moodle_still_on_sso")
+                        return False
+                except: 
+                    pass  # If username field not found, might be redirecting
+            
+            # Verify we actually reached Moodle dashboard
+            try:
+                self.wait.until(EC.url_contains("moodle.tu-dortmund.de"))
+                
+                # Final check - are we on dashboard or redirected elsewhere?
+                if "moodle.tu-dortmund.de/my" in self.driver.current_url or "moodle.tu-dortmund.de/login/index.php" not in self.driver.current_url:
+                    logger.info("Successfully authenticated to Moodle")
+                    return True
+                else:
+                    logger.warning("SSO Login failed: Redirected back to login page")
+                    return False
+            except:
+                logger.warning("SSO Login failed: Timeout waiting for Moodle redirect")
+                self._dump_debug_info("moodle_timeout")
                 return False
                 
-            return True
         except Exception as e:
             logger.error(f"Login failed: {e}")
             self._dump_debug_info("moodle_login_err")

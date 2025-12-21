@@ -38,6 +38,8 @@ dependencies:
   intl: ^0.20.2
   google_fonts: ^6.3.3
   flutter_markdown: ^0.7.6
+  flutter_markdown_latex: ^0.3.4
+  flutter_math_fork: ^0.7.1
   flutter_spinkit: ^5.2.2
   table_calendar: ^3.2.0
   shared_preferences: ^2.3.3

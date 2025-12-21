@@ -157,39 +157,50 @@ class WorkspaceService {
     }
   }
 
-  /// Send a chat message to Gemini 2.0 Flash API with memory
-  /// Uses /chat endpoint with user_id for 24h conversation memory
-  static Future<String?> sendGeminiChat(
+  /// Send a chat message to the Chat Assistant (Ayla).
+  /// Uses dedicated /assistant/chat endpoint with academic context from Supabase.
+  /// This is for the floating Ayla widget - separate from workspace chat.
+  static Future<String?> sendAssistantChat(
     String message, {
     String? userId,
     Map<String, dynamic>? studentContext,
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/chat'),
+        Uri.parse('$baseUrl/assistant/chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'prompt': message,
+          'message': message,
           'user_id': userId ?? 'anonymous',
           'student_context': studentContext,
-          'max_tokens': 4096,
         }),
       );
       
-      debugPrint("Gemini chat response: ${response.statusCode}");
+      debugPrint("Assistant chat response: ${response.statusCode}");
       
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         debugPrint("Chat history count: ${result['history_count']}");
         return result['result'];
       } else {
-        debugPrint("Gemini error: ${response.body}");
+        debugPrint("Assistant error: ${response.body}");
         return "Sorry, I couldn't process your request. Error: ${response.statusCode}";
       }
     } catch (e) {
-      debugPrint("Error sending Gemini chat: $e");
+      debugPrint("Error sending assistant chat: $e");
       return "Sorry, I'm having trouble connecting to the AI service. Please try again.";
     }
+  }
+
+  /// [DEPRECATED] Use sendAssistantChat for floating widget, or sendChat for workspace.
+  /// Kept for backward compatibility.
+  static Future<String?> sendGeminiChat(
+    String message, {
+    String? userId,
+    Map<String, dynamic>? studentContext,
+  }) async {
+    // Redirect to assistant chat
+    return sendAssistantChat(message, userId: userId, studentContext: studentContext);
   }
 
   /// Get files for a workspace

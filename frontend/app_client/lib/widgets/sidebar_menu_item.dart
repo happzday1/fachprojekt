@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../utils/design_tokens.dart';
 
 class SidebarMenuItem extends StatelessWidget {
   final IconData icon;
@@ -17,32 +18,43 @@ class SidebarMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF3A7BD5).withValues(alpha: 0.1) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected 
+                ? DesignTokens.braunOrange.withValues(alpha: 0.12) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: isSelected 
+                ? Border.all(color: DesignTokens.braunOrange.withValues(alpha: 0.2))
+                : null,
           ),
           child: Row(
             children: [
-              Icon(icon, color: isSelected 
-                  ? const Color(0xFF00D2FF) 
-                  : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black), 
-              size: 20),
-              const SizedBox(width: 12),
+              Icon(
+                icon, 
+                color: isSelected 
+                    ? DesignTokens.braunOrange 
+                    : DesignTokens.textSec(isDark), 
+                size: 20
+              ),
+              const SizedBox(width: 14),
               Text(
                 label,
                 style: GoogleFonts.inter(
                   color: isSelected 
-                      ? const Color(0xFF00D2FF) 
-                      : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
+                      ? DesignTokens.braunOrange
+                      : DesignTokens.textSec(isDark),
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],

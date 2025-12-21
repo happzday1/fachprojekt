@@ -99,10 +99,22 @@ class ApiService {
           sessionData['username'] = username;
           return SessionData.fromJson(sessionData);
         } else {
-          // Extract error message from response
-          final errorMsg = loginResult['error'] ?? "Login failed. Please check your credentials.";
-          debugPrint("API returned error: $errorMsg");
-          throw Exception(errorMsg.toString());
+          // Extract error message from response - login failed
+          final errorCode = loginResult['error']?.toString() ?? "";
+          debugPrint("API returned error: $errorCode");
+          
+          // Check for specific error codes from backend
+          if (errorCode == "invalid_credentials" || 
+              errorCode.toLowerCase().contains("authentication failed") ||
+              errorCode.toLowerCase().contains("login failed")) {
+            throw Exception("Wrong username or password. Please check your credentials and try again.");
+          } else if (errorCode == "error") {
+            throw Exception("Login failed. Please verify your university credentials.");
+          } else if (errorCode.isNotEmpty) {
+            throw Exception(errorCode);
+          } else {
+            throw Exception("Login failed. Please check your credentials.");
+          }
         }
       } else {
         // Try to parse error from response body

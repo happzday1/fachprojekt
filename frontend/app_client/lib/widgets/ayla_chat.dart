@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../services/workspace_service.dart';
 import '../services/audio_service.dart';
+import '../utils/design_tokens.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
@@ -53,8 +54,6 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     return ScaleTransition(
       scale: _pulseAnimation,
       child: GestureDetector(
@@ -63,51 +62,20 @@ class _AylaChatButtonState extends State<AylaChatButton> with SingleTickerProvid
           width: 56, height: 56,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1), width: 1.5),
+            color: DesignTokens.braunOrange,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF38B6FF).withValues(alpha: isDark ? 0.2 : 0.1),
+                color: DesignTokens.braunOrange.withValues(alpha: 0.4),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: BackdropFilter(
-              filter: ColorFilter.mode(
-                const Color(0xFF38B6FF).withValues(alpha: 0.05),
-                BlendMode.srcOver,
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                   Icon(
-                    Icons.auto_awesome_rounded, 
-                    color: isDark ? Colors.white.withValues(alpha: 0.9) : const Color(0xFF1E293B),
-                    size: 24,
-                  ),
-                  Positioned(
-                    right: 14, 
-                    top: 14, 
-                    child: Container(
-                      width: 8, height: 8, 
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF38B6FF), 
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF38B6FF).withValues(alpha: 0.5),
-                            blurRadius: 4,
-                            spreadRadius: 1,
-                          )
-                        ]
-                      )
-                    )
-                  ),
-                ],
-              ),
+          child: const Center(
+            child: Icon(
+              Icons.auto_awesome_rounded, 
+              color: Colors.white,
+              size: 26,
             ),
           ),
         ),
@@ -176,7 +144,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
     try {
       final contextMap = _buildStudentContext();
       final userId = widget.session.userId ?? widget.session.username;
-      final response = await WorkspaceService.sendGeminiChat(text, userId: userId, studentContext: {
+      final response = await WorkspaceService.sendAssistantChat(text, userId: userId, studentContext: {
         'name': widget.session.profileName,
         'ects': contextMap['total_ects'],
         'degree': contextMap['degree_program'],
@@ -245,7 +213,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
       
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('${WorkspaceService.baseUrl}/chat/audio'),
+        Uri.parse('${WorkspaceService.baseUrl}/assistant/audio'),
       );
       
       final userId = widget.session.userId ?? widget.session.username;
@@ -304,7 +272,12 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           duration: const Duration(milliseconds: 200),
           width: _isMinimized ? 56 : chatWidth,
           height: _isMinimized ? 56 : 550,
-          decoration: BoxDecoration(color: isDark ? const Color(0xFF1a1a1a) : Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: isDark ? const Color(0xFF3A7BD5).withValues(alpha: 0.3) : Colors.grey.shade300, width: 1.5)),
+          decoration: BoxDecoration(
+            color: DesignTokens.surface(isDark), 
+            borderRadius: BorderRadius.circular(24), 
+            border: Border.all(color: DesignTokens.border(isDark), width: 1.5),
+            boxShadow: DesignTokens.cardShadow(isDark),
+          ),
           child: _isMinimized ? _buildMinimizedView() : _buildExpandedView(isDark),
         ),
       ),
@@ -312,19 +285,18 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
   }
 
   Widget _buildMinimizedView() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => setState(() => _isMinimized = false),
       borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          color: DesignTokens.braunOrange,
           borderRadius: BorderRadius.circular(24),
         ), 
-        child: Center(
+        child: const Center(
           child: Icon(
             Icons.auto_awesome_rounded, 
-            color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF1E293B), 
+            color: Colors.white, 
             size: 24
           )
         )
@@ -340,32 +312,38 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.03) : const Color(0xFF1E293B).withValues(alpha: 0.03),
-              border: Border(bottom: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))),
+              color: DesignTokens.surface(isDark),
+              border: Border(bottom: BorderSide(color: DesignTokens.border(isDark))),
             ),
             child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(8), 
                 decoration: BoxDecoration(
-                  color: const Color(0xFF38B6FF).withValues(alpha: 0.1), 
-                  borderRadius: BorderRadius.circular(12)
+                  color: DesignTokens.braunOrange, 
+                  borderRadius: BorderRadius.circular(10)
                 ), 
-                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 18)
+                child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18)
               ),
               const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Ayla", style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1E293B))), Text("AI Study Companion", style: GoogleFonts.inter(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38))])),
-              IconButton(icon: Icon(Icons.remove_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20), onPressed: () => setState(() => _isMinimized = true)),
-              IconButton(icon: Icon(Icons.close_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20), onPressed: widget.onClose),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Ayla", style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary(isDark))), Text("AI Study Companion", style: GoogleFonts.inter(fontSize: 10, color: DesignTokens.textTert(isDark)))])),
+              IconButton(icon: Icon(Icons.remove_rounded, color: DesignTokens.textTert(isDark), size: 20), onPressed: () => setState(() => _isMinimized = true)),
+              IconButton(icon: Icon(Icons.close_rounded, color: DesignTokens.textTert(isDark), size: 20), onPressed: widget.onClose),
             ]),
           ),
           Expanded(child: ListView.builder(controller: _scrollController, padding: const EdgeInsets.all(12), itemCount: _messages.length + (_isLoading ? 1 : 0), itemBuilder: (context, index) { if (index == _messages.length && _isLoading) return _buildTypingIndicator(isDark); return _buildMessage(_messages[index], isDark); })),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.grey.shade50, border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200))),
+            decoration: BoxDecoration(color: DesignTokens.surface(isDark), border: Border(top: BorderSide(color: DesignTokens.border(isDark)))),
             child: Row(children: [
-              Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: isDark ? Colors.white : Colors.black87), decoration: InputDecoration(hintText: _isRecording ? "Listening..." : "Ask anything...", hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade500, fontSize: 14), filled: true, fillColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true, suffixIcon: IconButton(icon: _isRecording ? const _PulseMicIcon() : const Icon(Icons.mic_rounded, color: Color(0xFF38B6FF)), onPressed: _toggleRecording)), onSubmitted: (_) => _sendMessage())),
+              Expanded(child: TextField(controller: _messageController, style: GoogleFonts.inter(fontSize: 14, color: DesignTokens.textPrimary(isDark)), decoration: InputDecoration(hintText: _isRecording ? "Listening..." : "Ask anything...", hintStyle: TextStyle(color: DesignTokens.textTert(isDark), fontSize: 14), filled: true, fillColor: DesignTokens.background(isDark), border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), isDense: true, suffixIcon: IconButton(icon: _isRecording ? const _PulseMicIcon() : Icon(Icons.mic_rounded, color: DesignTokens.braunOrange), onPressed: _toggleRecording)), onSubmitted: (_) => _sendMessage())),
               const SizedBox(width: 8),
-              IconButton(icon: const Icon(Icons.send_rounded, color: Color(0xFF38B6FF)), onPressed: _sendMessage),
+              Container(
+                decoration: BoxDecoration(
+                  color: DesignTokens.braunOrange,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(icon: const Icon(Icons.send_rounded, color: Colors.white), onPressed: _sendMessage),
+              ),
             ]),
           ),
         ],
@@ -382,10 +360,10 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
             Container(
               width: 26, height: 26, 
               decoration: BoxDecoration(
-                color: const Color(0xFF38B6FF).withValues(alpha: 0.1), 
+                color: DesignTokens.braunOrange.withValues(alpha: 0.15), 
                 borderRadius: BorderRadius.circular(8)
               ), 
-              child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF38B6FF), size: 14)
+              child: Icon(Icons.auto_awesome_rounded, color: DesignTokens.braunOrange, size: 14)
             ), 
             const SizedBox(width: 8)
           ],
@@ -394,23 +372,23 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), 
               decoration: BoxDecoration(
                 color: message.isUser 
-                  ? (isDark ? const Color(0xFF38B6FF).withValues(alpha: 0.8) : const Color(0xFF38B6FF)) 
-                  : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04)), 
+                  ? DesignTokens.braunOrange 
+                  : DesignTokens.surface(isDark), 
                 borderRadius: BorderRadius.circular(16).copyWith(
                   bottomRight: message.isUser ? const Radius.circular(4) : null, 
                   bottomLeft: !message.isUser ? const Radius.circular(4) : null
                 ), 
-                border: Border.all(color: message.isUser ? Colors.transparent : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)))
+                border: Border.all(color: message.isUser ? Colors.transparent : DesignTokens.border(isDark))
               ), 
               child: message.isUser 
                 ? Text(message.text, style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: Colors.white)) 
                 : MarkdownBody(
                     data: message.text, 
                     styleSheet: MarkdownStyleSheet(
-                      p: GoogleFonts.inter(fontSize: 13, height: 1.4, color: isDark ? Colors.white : Colors.black87), 
-                      a: GoogleFonts.inter(color: const Color(0xFF38B6FF), decoration: TextDecoration.underline), 
-                      code: GoogleFonts.robotoMono(backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200, fontSize: 12), 
-                      codeblockDecoration: BoxDecoration(color: isDark ? Colors.black26 : Colors.grey.shade100, borderRadius: BorderRadius.circular(8))
+                      p: GoogleFonts.inter(fontSize: 13, height: 1.4, color: DesignTokens.textPrimary(isDark)), 
+                      a: GoogleFonts.inter(color: DesignTokens.braunOrange, decoration: TextDecoration.underline), 
+                      code: GoogleFonts.robotoMono(backgroundColor: DesignTokens.surface(isDark), fontSize: 12), 
+                      codeblockDecoration: BoxDecoration(color: DesignTokens.background(isDark), borderRadius: BorderRadius.circular(8))
                     ), 
                     onTapLink: (text, href, title) { if (href != null) launchUrl(Uri.parse(href)); }
                   )
@@ -430,16 +408,16 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
           Container(
             width: 26, height: 26, 
             decoration: BoxDecoration(
-              color: const Color(0xFF38B6FF).withValues(alpha: 0.1), 
+              color: DesignTokens.braunOrange.withValues(alpha: 0.15), 
               borderRadius: BorderRadius.circular(8)
             ), 
-            child: const Icon(Icons.psychology_rounded, color: Color(0xFF38B6FF), size: 14)
+            child: Icon(Icons.psychology_rounded, color: DesignTokens.braunOrange, size: 14)
           ), 
           const SizedBox(width: 8), 
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), 
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04), 
+              color: DesignTokens.surface(isDark), 
               borderRadius: BorderRadius.circular(14).copyWith(bottomLeft: const Radius.circular(4))
             ), 
             child: Column(
@@ -465,7 +443,7 @@ class _AylaFloatingChatState extends State<AylaFloatingChat> with SingleTickerPr
       builder: (context, value, _) => Container(
         margin: EdgeInsets.only(right: index < 2 ? 4 : 0), 
         width: 6, height: 6, 
-        decoration: BoxDecoration(color: const Color(0xFF38B6FF).withValues(alpha: value), shape: BoxShape.circle)
+        decoration: BoxDecoration(color: DesignTokens.braunOrange.withValues(alpha: value), shape: BoxShape.circle)
       )
     );
   }

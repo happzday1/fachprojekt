@@ -2,10 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
+import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../services/workspace_service.dart';
 import '../widgets/glass_container.dart';
 import '../services/audio_service.dart';
+import '../utils/design_tokens.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'dart:convert';
@@ -30,6 +35,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _chatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
   List<Map<String, dynamic>> _chatMessages = [];
   List<Map<String, dynamic>> _files = [];
   bool _isChatLoading = false;
@@ -50,7 +56,21 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void dispose() {
     _notesController.dispose();
     _chatController.dispose();
+    _chatScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollChatToBottom() {
+    // With reverse: true, the bottom is at 0.0
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_chatScrollController.hasClients && mounted) {
+        _chatScrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _loadWorkspaces() async {
@@ -69,25 +89,26 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A2E) : Colors.white,
-        title: Text("Create Workspace", style: GoogleFonts.inter(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)),
+        backgroundColor: DesignTokens.surface(Theme.of(context).brightness == Brightness.dark),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Create Workspace", style: GoogleFonts.inter(color: DesignTokens.textPrimary(Theme.of(context).brightness == Brightness.dark), fontWeight: FontWeight.w700)),
         content: TextField(
           controller: nameController,
           autofocus: true,
-          style: GoogleFonts.inter(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+          style: GoogleFonts.inter(color: DesignTokens.textPrimary(Theme.of(context).brightness == Brightness.dark)),
           decoration: InputDecoration(
             hintText: "Workspace name (e.g., Math, Research)",
-            hintStyle: GoogleFonts.inter(color: Colors.grey),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF00D2FF), width: 2)),
+            hintStyle: GoogleFonts.inter(color: DesignTokens.textTert(Theme.of(context).brightness == Brightness.dark)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: DesignTokens.braunOrange, width: 2)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.inter(color: Colors.grey))),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: GoogleFonts.inter(color: DesignTokens.textTert(Theme.of(context).brightness == Brightness.dark)))),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, nameController.text.trim()),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3A7BD5), foregroundColor: Colors.white),
-            child: Text("Create", style: GoogleFonts.inter()),
+            style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.braunOrange, foregroundColor: Colors.white),
+            child: Text("Create", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -104,7 +125,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final chats = await WorkspaceService.getChats(workspace['id']);
     final files = await WorkspaceService.getFiles(workspace['id']);
     if (mounted) {
-      setState(() { _notesController.text = notes; _chatMessages = chats; _files = files; _isLoading = false; });
+      setState(() { 
+        _notesController.text = notes; 
+        _chatMessages = chats.reversed.toList(); 
+        _files = files; 
+        _isLoading = false; 
+      });
     }
   }
 
@@ -119,10 +145,16 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (_chatController.text.trim().isEmpty || _selectedWorkspace == null) return;
     final message = _chatController.text.trim();
     _chatController.clear();
-    setState(() { _chatMessages.add({'role': 'user', 'message': message}); _isChatLoading = true; });
+    setState(() { _chatMessages.insert(0, {'role': 'user', 'message': message}); _isChatLoading = true; });
+    
     final response = await WorkspaceService.sendChat(_selectedWorkspace!['id'], _studentId, message, _notesController.text);
     if (mounted) {
-      setState(() { _isChatLoading = false; if (response != null) { _chatMessages.add({'role': 'model', 'message': response}); } });
+      setState(() { 
+        _isChatLoading = false; 
+        if (response != null) { 
+          _chatMessages.insert(0, {'role': 'model', 'message': response}); 
+        } 
+      });
     }
   }
 
@@ -149,7 +181,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Future<void> _sendAudioMessage(String path) async {
     if (_selectedWorkspace == null) return;
     setState(() {
-      _chatMessages.add({'role': 'user', 'message': '🎤 Voice Prompt'});
+      _chatMessages.insert(0, {'role': 'user', 'message': '🎤 Voice Prompt'});
       _isChatLoading = true;
     });
 
@@ -191,7 +223,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
           setState(() {
             _isChatLoading = false;
             if (data['answer'] != null) {
-              _chatMessages.add({'role': 'model', 'message': data['answer']});
+              _chatMessages.insert(0, {'role': 'model', 'message': data['answer']});
             }
           });
         }
@@ -202,7 +234,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       if (mounted) {
         setState(() {
           _isChatLoading = false;
-          _chatMessages.add({'role': 'model', 'message': "Audio chat failed: ${e.toString()}"});
+          _chatMessages.insert(0, {'role': 'model', 'message': "Audio chat failed: ${e.toString()}"});
         });
       }
     }
@@ -241,12 +273,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A2E) : Colors.white,
-        title: Text("Delete Workspace?", style: GoogleFonts.inter(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)),
-        content: Text("This will delete all notes, files, and chat history.", style: GoogleFonts.inter(color: Colors.grey)),
+        backgroundColor: DesignTokens.surface(Theme.of(context).brightness == Brightness.dark),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Delete Workspace?", style: GoogleFonts.inter(color: DesignTokens.textPrimary(Theme.of(context).brightness == Brightness.dark), fontWeight: FontWeight.w700)),
+        content: Text("This will delete all notes, files, and chat history.", style: GoogleFonts.inter(color: DesignTokens.textSec(Theme.of(context).brightness == Brightness.dark))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel", style: GoogleFonts.inter(color: Colors.grey))),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: Text("Delete", style: GoogleFonts.inter(color: Colors.white))),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text("Cancel", style: GoogleFonts.inter(color: DesignTokens.textTert(Theme.of(context).brightness == Brightness.dark)))),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), style: ElevatedButton.styleFrom(backgroundColor: DesignTokens.softRed), child: Text("Delete", style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600))),
         ],
       ),
     );
@@ -277,8 +310,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : const Color(0xFF1E293B),
-                        letterSpacing: -1,
+                        color: DesignTokens.textPrimary(isDark),
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -286,7 +319,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
                       "Organize your studies and research",
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: isDark ? Colors.white54 : Colors.black54,
+                        color: DesignTokens.textSec(isDark),
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -299,17 +332,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                      color: DesignTokens.braunOrange,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+                      boxShadow: DesignTokens.buttonShadow(isDark),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.add_rounded, size: 18, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
+                        const Icon(Icons.add_rounded, size: 18, color: Colors.white),
                         const SizedBox(width: 8),
                         Text(
                           "New Workspace",
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
                         ),
                       ],
                     ),
@@ -327,11 +360,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.folder_open_rounded, size: 64, color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+                            Icon(Icons.folder_open_rounded, size: 64, color: DesignTokens.textTert(isDark)),
                             const SizedBox(height: 24),
-                            Text("No workspaces yet", style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white38 : Colors.black38)),
+                            Text("No workspaces yet", style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600, color: DesignTokens.textTert(isDark))),
                             const SizedBox(height: 8),
-                            Text("Create your first one to get started", style: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.24) : Colors.black.withValues(alpha: 0.24))),
+                            Text("Create your first one to get started", style: GoogleFonts.inter(color: DesignTokens.textTert(isDark))),
                           ],
                         ),
                       )
@@ -372,13 +405,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white38 : Colors.black38, size: 20),
+                  icon: Icon(Icons.arrow_back_rounded, color: DesignTokens.textTert(isDark), size: 20),
                   onPressed: () { _saveNotes(); setState(() => _selectedWorkspace = null); },
                 ),
                 const SizedBox(width: 16),
                 Text(
                   _selectedWorkspace?['name'] ?? 'Workspace', 
-                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: isDark ? Colors.white : const Color(0xFF1E293B)),
+                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: DesignTokens.textPrimary(isDark)),
                 ),
                 const Spacer(),
                 _buildActionButton(Icons.save_rounded, "Save Notes", _saveNotes, isDark),
@@ -400,19 +433,22 @@ class _WorkspacePageState extends State<WorkspacePage> {
                             borderRadius: 24,
                             child: Column(
                               children: [
-                                _buildPaneHeader(Icons.auto_awesome_rounded, "Ayla Chat", Colors.indigoAccent, isDark),
+                                _buildPaneHeader(Icons.auto_awesome_rounded, "Ayla Chat", DesignTokens.braunOrange, isDark),
                                 Expanded(
                                   child: ListView.builder(
-                                    padding: const EdgeInsets.all(20),
-                                    itemCount: _chatMessages.length + (_isChatLoading ? 1 : 0),
-                                    itemBuilder: (context, index) {
-                                      if (index == _chatMessages.length && _isChatLoading) {
-                                        return _buildTypingIndicator(isDark);
-                                      }
-                                      final msg = _chatMessages[index];
-                                      return _buildChatMessage(msg, isDark);
-                                    },
-                                  ),
+                                  controller: _chatScrollController,
+                                  reverse: true,
+                                  padding: const EdgeInsets.all(20),
+                                  itemCount: _chatMessages.length + (_isChatLoading ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (_isChatLoading && index == 0) {
+                                      return _buildTypingIndicator(isDark);
+                                    }
+                                    final msgIndex = _isChatLoading ? index - 1 : index;
+                                    final msg = _chatMessages[msgIndex];
+                                    return _buildChatMessage(msg, isDark);
+                                  },
+                                ),
                                 ),
                                 _buildChatInput(isDark),
                               ],
@@ -436,7 +472,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
                                       _buildPaneHeaderWithAction(
                                         Icons.file_copy_rounded, 
                                         "Materials", 
-                                        Colors.amber, 
+                                        DesignTokens.braunOrange, 
                                         Icons.add_rounded, 
                                         _uploadFile, 
                                         isDark,
@@ -463,7 +499,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
                                   borderRadius: 24,
                                   child: Column(
                                     children: [
-                                      _buildPaneHeader(Icons.edit_note_rounded, "Workspace Notes", Colors.tealAccent, isDark),
+                                      _buildPaneHeader(Icons.edit_note_rounded, "Workspace Notes", DesignTokens.sageGreen, isDark),
                                       Expanded(
                                         child: Padding(
                                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -474,11 +510,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
                                             style: GoogleFonts.inter(
                                               fontSize: 14, 
                                               height: 1.6, 
-                                              color: isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black87,
+                                              color: DesignTokens.textPrimary(isDark),
                                             ),
                                             decoration: InputDecoration(
                                               hintText: "Synthesize your knowledge here...\n\nAyla will use these notes to provide better context.",
-                                              hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+                                              hintStyle: GoogleFonts.inter(color: DesignTokens.textTert(isDark)),
                                               border: InputBorder.none,
                                             ),
                                           ),
@@ -512,8 +548,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white54 : Colors.black54,
-              letterSpacing: 1.2,
+              color: DesignTokens.textTert(isDark),
+              letterSpacing: 1.8,
             ),
           ),
         ],
@@ -533,14 +569,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white54 : Colors.black54,
-              letterSpacing: 1.2,
+              color: DesignTokens.textTert(isDark),
+              letterSpacing: 1.8,
             ),
           ),
           const Spacer(),
           IconButton(
             tooltip: tooltip,
-            icon: Icon(actionIcon, size: 18, color: isDark ? Colors.white38 : Colors.black38),
+            icon: Icon(actionIcon, size: 18, color: DesignTokens.textTert(isDark)),
             onPressed: onAction,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -560,8 +596,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.35),
         decoration: BoxDecoration(
           color: isUser 
-              ? Colors.indigoAccent.withValues(alpha: isDark ? 0.15 : 0.08) 
-              : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03)),
+              ? DesignTokens.braunOrange.withValues(alpha: isDark ? 0.15 : 0.10) 
+              : DesignTokens.surface(isDark),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -570,18 +606,48 @@ class _WorkspacePageState extends State<WorkspacePage> {
           ),
           border: Border.all(
             color: isUser 
-                ? Colors.indigoAccent.withValues(alpha: 0.2) 
-                : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))
+                ? DesignTokens.braunOrange.withValues(alpha: 0.25) 
+                : DesignTokens.border(isDark)
           ),
         ),
-        child: Text(
-          msg['message'] ?? '',
-          style: GoogleFonts.inter(
-            color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
-            height: 1.6,
-            fontSize: 14,
+        child: isUser 
+          ? Text(
+              msg['message'] ?? '',
+              style: GoogleFonts.inter(
+                color: DesignTokens.textPrimary(isDark),
+                height: 1.6,
+                fontSize: 14,
+              ),
+            )
+          : MarkdownBody(
+            data: msg['message'] ?? '',
+            builders: {
+              'latex': LatexElementBuilder(
+                textStyle: GoogleFonts.inter(
+                  color: DesignTokens.textPrimary(isDark),
+                  height: 1.6,
+                  fontSize: 14,
+                ),
+              ),
+            },
+            extensionSet: md.ExtensionSet(
+              [LatexBlockSyntax(), ...md.ExtensionSet.gitHubFlavored.blockSyntaxes],
+              [LatexInlineSyntax(), ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes],
+            ),
+            styleSheet: MarkdownStyleSheet(
+              p: GoogleFonts.inter(
+                color: DesignTokens.textPrimary(isDark),
+                height: 1.6,
+                fontSize: 14,
+              ),
+              a: GoogleFonts.inter(color: DesignTokens.braunOrange, decoration: TextDecoration.underline),
+              code: GoogleFonts.robotoMono(backgroundColor: DesignTokens.surface(isDark), fontSize: 13),
+              codeblockDecoration: BoxDecoration(color: DesignTokens.background(isDark), borderRadius: BorderRadius.circular(8)),
+            ),
+            onTapLink: (text, href, title) {
+              if (href != null) launchUrl(Uri.parse(href));
+            },
           ),
-        ),
       ),
     );
   }
@@ -590,21 +656,21 @@ class _WorkspacePageState extends State<WorkspacePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05))),
+        border: Border(top: BorderSide(color: DesignTokens.border(isDark))),
       ),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _chatController,
-              style: GoogleFonts.inter(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+              style: GoogleFonts.inter(color: DesignTokens.textPrimary(isDark), fontSize: 14),
               decoration: InputDecoration(
                 hintText: _isRecording ? "Listening..." : "Collaborate with Ayla...",
-                hintStyle: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.24) : Colors.black.withValues(alpha: 0.24)),
+                hintStyle: GoogleFonts.inter(color: DesignTokens.textTert(isDark)),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 suffixIcon: IconButton(
-                  icon: _isRecording ? const _PulseMicIcon() : Icon(Icons.mic_rounded, color: isDark ? Colors.white38 : Colors.black38),
+                  icon: _isRecording ? const _PulseMicIcon() : Icon(Icons.mic_rounded, color: DesignTokens.textTert(isDark)),
                   onPressed: _toggleRecording,
                 ),
               ),
@@ -614,11 +680,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
           const SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+              color: DesignTokens.braunOrange,
               borderRadius: BorderRadius.circular(12),
+              boxShadow: DesignTokens.buttonShadow(isDark),
             ),
             child: IconButton(
-              icon: Icon(Icons.send_rounded, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7), size: 20),
+              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
               onPressed: _sendChatMessage,
             ),
           ),
@@ -632,24 +699,24 @@ class _WorkspacePageState extends State<WorkspacePage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+        color: DesignTokens.surface(isDark).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: DesignTokens.border(isDark)),
       ),
       child: Row(
         children: [
-          Icon(Icons.insert_drive_file_rounded, size: 18, color: isDark ? Colors.white38 : Colors.black38),
+          Icon(Icons.insert_drive_file_rounded, size: 18, color: DesignTokens.textTert(isDark)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               file['filename'] ?? 'File',
-              style: GoogleFonts.inter(color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7), fontSize: 13),
+              style: GoogleFonts.inter(color: DesignTokens.textSec(isDark), fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent.withValues(alpha: 0.5)),
+            icon: Icon(Icons.delete_outline_rounded, size: 18, color: DesignTokens.softRed.withValues(alpha: 0.6)),
             onPressed: () => _deleteFile(file['id']),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -684,9 +751,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 32, color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+          Icon(icon, size: 32, color: DesignTokens.textTert(isDark)),
           const SizedBox(height: 12),
-          Text(message, style: GoogleFonts.inter(color: isDark ? Colors.white.withValues(alpha: 0.24) : Colors.black.withValues(alpha: 0.24), fontSize: 13)),
+          Text(message, style: GoogleFonts.inter(color: DesignTokens.textTert(isDark), fontSize: 13)),
         ],
       ),
     );
@@ -699,17 +766,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+          color: DesignTokens.surface(isDark),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+          border: Border.all(color: DesignTokens.border(isDark)),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+            Icon(icon, size: 16, color: DesignTokens.textTert(isDark)),
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? Colors.white38 : Colors.black38),
+              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: DesignTokens.textSec(isDark)),
             ),
           ],
         ),
@@ -740,10 +807,10 @@ class _WorkspaceCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.1),
+                      color: DesignTokens.braunOrange.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.folder_rounded, size: 32, color: Colors.amber),
+                    child: Icon(Icons.folder_rounded, size: 32, color: DesignTokens.braunOrange),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -751,7 +818,7 @@ class _WorkspaceCard extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontSize: 15, 
                       fontWeight: FontWeight.w700, 
-                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      color: DesignTokens.textPrimary(isDark),
                     ), 
                     textAlign: TextAlign.center, 
                     maxLines: 1, 
@@ -764,7 +831,7 @@ class _WorkspaceCard extends StatelessWidget {
               top: 12, 
               right: 12, 
               child: IconButton(
-                icon: Icon(Icons.delete_outline_rounded, size: 18, color: isDark ? Colors.white12 : Colors.black12), 
+                icon: Icon(Icons.delete_outline_rounded, size: 18, color: DesignTokens.textTert(isDark)), 
                 onPressed: onDelete,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -799,9 +866,9 @@ class _PulseMicIconState extends State<_PulseMicIcon> with SingleTickerProviderS
       builder: (context, child) => Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Colors.redAccent.withValues(alpha: 0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
+          boxShadow: [BoxShadow(color: DesignTokens.softRed.withValues(alpha: 0.4 * _controller.value), blurRadius: 10 * _controller.value, spreadRadius: 2 * _controller.value)],
         ),
-        child: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent, size: 20),
+        child: Icon(Icons.stop_circle_rounded, color: DesignTokens.softRed, size: 20),
       ),
     );
   }

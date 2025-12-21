@@ -23,7 +23,7 @@ from google.genai import types
 
 from app.services.workspace_service import WorkspaceService
 from app.services.academic_service import AcademicService
-from backend_config import MODEL_NAME, SYSTEM_INSTRUCTION
+from backend_config import MODEL_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -308,12 +308,31 @@ async def send_chat(workspace_id: str, data: ChatMessage):
         
         # 4. Generate Response
         
-        # Prepare system instruction with Academic Context
-        academic_service = AcademicService()
-        academic_summary = await academic_service.get_academic_summary(user_uuid)
-        
-        full_sys_instr = f"{academic_summary}\n\n{SYSTEM_INSTRUCTION}"
-        sys_part = types.Part(text=full_sys_instr)
+        # Workspace-specific system instruction (NO academic context - that's for the Assistant)
+        workspace_sys_instr = r"""You are Ayla, an intelligent AI assistant helping the student analyze and work with their study materials.
+
+Your role in this Workspace context:
+- Help analyze and summarize uploaded documents and PDFs
+- Answer questions about the content of files in this workspace
+- Explain concepts from the materials
+- Help with study notes and comprehension
+
+**CRITICAL - Mathematics Formatting Rules:**
+You MUST use proper LaTeX notation for ALL mathematical expressions. This is essential for readability in the student's dashboard.
+
+For INLINE math (mixed with text), wrap with single dollar signs:
+- Example: $\frac{4x}{x^4-1}$ or $\int f(x) dx$ or $x^2 + y^2 = r^2$
+
+For DISPLAY math (on its own line), wrap with double dollar signs:
+$$\int \frac{4x}{x^4-1} dx = \ln|x-1| - \ln|x+1| + C$$
+
+TECHNICAL CONSTRAINTS:
+- ALWAYS use LaTeX for any mathematical expression, no matter how simple (even for solitary variables like $x$ or $y$).
+- Use $ for inline math and $$ for display math.
+- NEVER output a full LaTeX document ($$ \documentclass... $$) - only the Markdown text with LaTeX inside.
+- Focus on the uploaded files and notes in this workspace.
+"""
+        sys_part = types.Part(text=workspace_sys_instr)
         
         # Prepare content for current generation
         # If we have cache, we only send the NEW parts or the whole history?

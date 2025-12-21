@@ -94,7 +94,12 @@ async def chat_with_audio(
         prompt_parts.append(audio_part)
 
         # Build config based on whether we have a cache
-        from backend_config import SYSTEM_INSTRUCTION
+        # Workspace audio system instruction (file-focused, enforce LaTeX)
+        workspace_audio_instr = """You are Ayla, helping the student with their study materials via voice.
+Focus on analyzing the uploaded documents and providing helpful explanations.
+Respond in the same language the user speaks.
+CRITICAL: Use LaTeX for ALL math expressions. Write $\\frac{a}{b}$ not a/b. Use $$equation$$ for display math."""
+        
         if cached_content_name:
             config = {
                 "cached_content": cached_content_name,
@@ -102,7 +107,7 @@ async def chat_with_audio(
             }
         else:
             config = {
-                "system_instruction": SYSTEM_INSTRUCTION,
+                "system_instruction": workspace_audio_instr,
                 "temperature": 0.7
             }
 

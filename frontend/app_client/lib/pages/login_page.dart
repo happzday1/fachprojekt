@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
-import '../widgets/glass_container.dart';
+import '../utils/design_tokens.dart';
 import '../main.dart'; // To access MainScreen
 
 class LoginPage extends StatefulWidget {
@@ -77,35 +77,33 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } catch (e) {
-      String errorText = "Invalid username or password. Please check your credentials and try again.";
+      String errorText = "Login failed. Please check your credentials.";
       final errorString = e.toString();
       
+      // Extract the actual error message
       if (errorString.contains("Exception: ")) {
         errorText = errorString.replaceAll("Exception: ", "").trim();
       } else if (errorString.isNotEmpty && errorString != "Exception") {
         errorText = errorString.trim();
       }
       
+      // Clean up "Message:" prefix if present
       if (errorText.startsWith("Message:")) {
         errorText = errorText.substring(8).trim();
       }
       
+      // Map network errors to friendly messages, but keep credential errors as-is
       final lowerError = errorText.toLowerCase();
-      if (lowerError.contains("credentials") || 
-          lowerError.contains("password") ||
-          lowerError.contains("username") ||
-          lowerError.contains("invalid") ||
-          lowerError.contains("wrong")) {
-        errorText = "Invalid username or password. Please check your credentials and try again.";
-      } else if (lowerError.contains("connect") ||
-                 lowerError.contains("network") ||
-                 lowerError.contains("unable to connect")) {
+      if (lowerError.contains("connect") ||
+          lowerError.contains("network") ||
+          lowerError.contains("socketexception") ||
+          lowerError.contains("unable to connect")) {
         errorText = "Unable to connect to server. Please check your internet connection and ensure the backend is running.";
-      } else if (lowerError.contains("server") ||
-                 lowerError.contains("500") ||
-                 lowerError.contains("error occurred")) {
+      } else if (lowerError.contains("500") ||
+                 lowerError.contains("server error")) {
         errorText = "Server error occurred. Please try again later.";
       }
+      // Note: "Wrong username or password" messages are preserved as-is
       
       if (mounted) {
         setState(() {
@@ -123,23 +121,32 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     if (_isCheckingCache) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
       return Scaffold(
-        backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFFF8FAFC),
+        backgroundColor: DesignTokens.background(isDark),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SpinKitDoubleBounce(color: isDark ? Colors.white : const Color(0xFF1E293B), size: 40),
-              const SizedBox(height: 24),
-              Text(
-                "Initializing Ayla",
-                style: GoogleFonts.inter(
-                  color: isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.6),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 2,
+              // Minimal loading indicator
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: DesignTokens.braunOrange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: DesignTokens.braunOrange,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -148,167 +155,300 @@ class _LoginPageState extends State<LoginPage> {
       );
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF020617) : const Color(0xFFF8FAFC),
-      body: Stack(
+      backgroundColor: DesignTokens.background(isDark),
+      body: Row(
         children: [
-          // Subtle Ambient Glow
-          Positioned(
-            top: -150,
-            left: -150,
+          // Left side - Branding Panel
+          Expanded(
+            flex: 5,
             child: Container(
-              width: 500,
-              height: 500,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF38B6FF).withValues(alpha: isDark ? 0.05 : 0.03),
-                    Colors.transparent,
-                  ],
-                ),
+                color: isDark 
+                    ? DesignTokens.darkSurface 
+                    : DesignTokens.warmGrey,
               ),
-            ),
-          ),
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
                 children: [
-                  // App Icon/Logo
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
-                    ),
-                    child: Icon(
-                      Icons.auto_awesome_rounded, 
-                      size: 48, 
-                      color: isDark ? Colors.white : const Color(0xFF1E293B)
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    "Ayla",
-                    style: GoogleFonts.inter(
-                      fontSize: 42,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF1E293B),
-                      letterSpacing: -1.5,
+                  // Subtle gradient overlay
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            DesignTokens.braunOrange.withValues(alpha: isDark ? 0.08 : 0.05),
+                            Colors.transparent,
+                            DesignTokens.sageGreen.withValues(alpha: isDark ? 0.05 : 0.03),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Your focused academic space.",
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      color: isDark ? Colors.white54 : Colors.black54,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  
-                  // Login Card
-                  GlassContainer(
-                    width: 440,
-                    padding: const EdgeInsets.all(40),
-                    borderRadius: 32,
-                    opacity: isDark ? 0.05 : 0.03,
-                    blur: 30,
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(64),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          "Welcome Back",
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                        // Logo mark
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: DesignTokens.braunOrange,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: DesignTokens.braunOrange.withValues(alpha: 0.3),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        _buildInputField(
-                          controller: _usernameController,
-                          label: "University Username",
-                          icon: Icons.alternate_email_rounded,
-                          isDark: isDark,
+                        const SizedBox(height: 48),
+                        // App name
+                        Text(
+                          "Ayla",
+                          style: GoogleFonts.inter(
+                            fontSize: 56,
+                            fontWeight: FontWeight.w800,
+                            color: DesignTokens.textPrimary(isDark),
+                            letterSpacing: -2,
+                            height: 1,
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        _buildInputField(
-                          controller: _passwordController,
-                          label: "Service Password",
-                          icon: Icons.lock_outline_rounded,
-                          isDark: isDark,
-                          isPassword: true,
+                        // Tagline
+                        Text(
+                          "Your focused academic companion.\nPowered by AI, designed for clarity.",
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w400,
+                            color: DesignTokens.textSec(isDark),
+                            height: 1.6,
+                          ),
                         ),
-                        const SizedBox(height: 32),
-                        
-                        if (_errorMessage != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.1)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 18),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                        
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? Colors.white : const Color(0xFF1E293B),
-                            foregroundColor: isDark ? Colors.black : Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20, 
-                                  width: 20, 
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey)
-                                )
-                              : Text(
-                                  "Enter Workspace",
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15),
-                                ),
+                        const SizedBox(height: 48),
+                        // Feature highlights
+                        _buildFeatureItem(
+                          Icons.calendar_today_rounded,
+                          "Track deadlines & schedules",
+                          isDark,
                         ),
-                        
-                        if (_isLoading) ...[
-                          const SizedBox(height: 24),
-                          Text(
-                            "Securely synchronizing with BOSS & Moodle...\nThis protocol takes approximately 30 seconds.",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              color: isDark ? Colors.white38 : Colors.black38, 
-                              fontSize: 12,
-                              height: 1.5,
-                            ),
-                          ),
-                        ],
+                        const SizedBox(height: 16),
+                        _buildFeatureItem(
+                          Icons.auto_graph_rounded,
+                          "Monitor ECTS & grades",
+                          isDark,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildFeatureItem(
+                          Icons.chat_bubble_outline_rounded,
+                          "AI-powered study assistant",
+                          isDark,
+                        ),
                       ],
                     ),
                   ),
+                  // Footer
+                  Positioned(
+                    left: 64,
+                    bottom: 48,
+                    child: Text(
+                      "SYNCS WITH BOSS & MOODLE",
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: DesignTokens.textTert(isDark),
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
                 ],
+              ),
+            ),
+          ),
+          
+          // Right side - Login Form
+          Expanded(
+            flex: 4,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(64),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Header
+                      Text(
+                        "SIGN IN",
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: DesignTokens.textTert(isDark),
+                          letterSpacing: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Welcome back",
+                        style: GoogleFonts.inter(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: DesignTokens.textPrimary(isDark),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Enter your university credentials to continue.",
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: DesignTokens.textSec(isDark),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      
+                      // Username field
+                      _buildInputField(
+                        controller: _usernameController,
+                        label: "USERNAME",
+                        hint: "Your university ID",
+                        icon: Icons.person_outline_rounded,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Password field
+                      _buildInputField(
+                        controller: _passwordController,
+                        label: "PASSWORD",
+                        hint: "Service password",
+                        icon: Icons.lock_outline_rounded,
+                        isDark: isDark,
+                        isPassword: true,
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      // Error message
+                      if (_errorMessage != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: DesignTokens.softRed.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: DesignTokens.softRed.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                color: DesignTokens.softRed,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage!,
+                                  style: GoogleFonts.inter(
+                                    color: DesignTokens.softRed,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      
+                      // Login button
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isLoading ? null : _handleLogin,
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: DesignTokens.braunOrange,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: DesignTokens.braunOrange.withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: _isLoading
+                                  ? SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                      ),
+                                    )
+                                  : Text(
+                                      "Continue",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Loading status
+                      if (_isLoading) ...[
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SpinKitThreeBounce(
+                              color: DesignTokens.braunOrange,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "Syncing with university systems...\nThis may take up to 30 seconds.",
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: DesignTokens.textTert(isDark),
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -317,9 +457,42 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _buildFeatureItem(IconData icon, String text, bool isDark) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: DesignTokens.surface(isDark),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: DesignTokens.border(isDark)),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 18,
+              color: DesignTokens.braunOrange,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          text,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: DesignTokens.textSec(isDark),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
+    required String hint,
     required IconData icon,
     required bool isDark,
     bool isPassword = false,
@@ -327,38 +500,56 @@ class _LoginPageState extends State<LoginPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white38 : Colors.black38,
-              letterSpacing: 0.5,
-            ),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: DesignTokens.textTert(isDark),
+            letterSpacing: 1.5,
           ),
         ),
+        const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+            color: DesignTokens.surface(isDark),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: DesignTokens.border(isDark)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TextField(
             controller: controller,
             obscureText: isPassword,
             style: GoogleFonts.inter(
-              color: isDark ? Colors.white : const Color(0xFF1E293B),
+              color: DesignTokens.textPrimary(isDark),
               fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
             decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: isDark ? Colors.white24 : Colors.black26, size: 20),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 16, right: 12),
+                child: Icon(
+                  icon,
+                  color: DesignTokens.textTert(isDark),
+                  size: 20,
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              hintText: "Enter placeholder...",
-              hintStyle: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 18),
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(
+                color: DesignTokens.textTert(isDark),
+                fontWeight: FontWeight.w400,
+              ),
             ),
+            onSubmitted: (_) => _handleLogin(),
           ),
         ),
       ],
