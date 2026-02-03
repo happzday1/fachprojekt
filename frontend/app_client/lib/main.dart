@@ -207,6 +207,59 @@ class _MainScreenState extends State<MainScreen> {
                       _selectedWorkspace = null; // Reset when clicking sidebar manually
                     })
                   ),
+                  const SizedBox(height: 16),
+                  // Theme Toggle
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: InkWell(
+                      onTap: () {
+                        themeNotifier.value = 
+                            themeNotifier.value == ThemeMode.dark 
+                                ? ThemeMode.light 
+                                : ThemeMode.dark;
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surface(isDark),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DesignTokens.border(isDark)),
+                        ),
+                        child: Row(
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, animation) {
+                                return RotationTransition(
+                                  turns: Tween(begin: 0.5, end: 1.0).animate(animation),
+                                  child: ScaleTransition(scale: animation, child: child),
+                                );
+                              },
+                              child: Icon(
+                                isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+                                key: ValueKey(isDark),
+                                color: isDark 
+                                    ? DesignTokens.signalYellow 
+                                    : DesignTokens.mutedBlue, 
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Text(
+                              isDark ? 'Light Mode' : 'Dark Mode',
+                              style: GoogleFonts.inter(
+                                color: DesignTokens.textSec(isDark),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -241,19 +294,22 @@ class _MainScreenState extends State<MainScreen> {
             Positioned(
               top: 24,
               left: 24,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => setState(() => _isSidebarOpen = true),
-                  borderRadius: BorderRadius.circular(12),
-                  child: GlassContainer(
-                    padding: const EdgeInsets.all(10),
-                    borderRadius: 12,
-                    opacity: isDark ? 0.05 : 0.1,
-                    child: Icon(
-                      Icons.menu_open_rounded, 
-                      color: isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.7), 
-                      size: 22
+              child: Tooltip(
+                message: 'Menu',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => setState(() => _isSidebarOpen = true),
+                    borderRadius: BorderRadius.circular(12),
+                    child: GlassContainer(
+                      padding: const EdgeInsets.all(10),
+                      borderRadius: 12,
+                      opacity: isDark ? 0.05 : 0.1,
+                      child: Icon(
+                        Icons.menu_open_rounded, 
+                        color: isDark ? Colors.white.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.7), 
+                        size: 22
+                      ),
                     ),
                   ),
                 ),

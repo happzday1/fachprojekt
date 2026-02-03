@@ -161,7 +161,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Welcome back, ${session.profileName.split(' ')[0]}",
+                      "Welcome back",
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: DesignTokens.textSec(isDark),
