@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'models/models.dart';
 import 'services/session_service.dart';
 import 'services/google_calendar_service.dart';
@@ -15,13 +17,24 @@ import 'widgets/sidebar_menu_item.dart';
 import 'widgets/configure_panels_dialog.dart';
 import 'services/panel_config_service.dart';
 
+late final SharedPreferences prefs;
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  prefs = await SharedPreferences.getInstance();
+  
+  // Load saved theme
+  final savedTheme = prefs.getString('theme_mode');
+  if (savedTheme == 'light') {
+    themeNotifier.value = ThemeMode.light;
+  } else {
+    themeNotifier.value = ThemeMode.dark;
+  }
+
   await GoogleCalendarService().initialize();
   runApp(const Ayla());
 }
-
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
 class Ayla extends StatelessWidget {
   const Ayla({super.key});
@@ -258,11 +271,12 @@ class _MainScreenState extends State<MainScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: InkWell(
-                      onTap: () {
-                        themeNotifier.value = 
-                            themeNotifier.value == ThemeMode.dark 
-                                ? ThemeMode.light 
-                                : ThemeMode.dark;
+                      onTap: () async {
+                        final newMode = themeNotifier.value == ThemeMode.dark 
+                            ? ThemeMode.light 
+                            : ThemeMode.dark;
+                        themeNotifier.value = newMode;
+                        await prefs.setString('theme_mode', newMode == ThemeMode.light ? 'light' : 'dark');
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
