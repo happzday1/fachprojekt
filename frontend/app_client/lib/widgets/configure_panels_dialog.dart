@@ -332,5 +332,6 @@ class _ConfigurePanelsDialogState extends State<ConfigurePanelsDialog> {
       ),
     );
   }
+
 }
 

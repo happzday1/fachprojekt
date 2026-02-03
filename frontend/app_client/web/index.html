@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -27,12 +28,22 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>Ayla</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Google Sign-In Client ID - Replace with your actual client ID from Google Cloud Console -->
+  <meta name="google-signin-client_id"
+    content="297201397929-i5ld30hbi6a2lv0kvsgkuc2r44qmikd9.apps.googleusercontent.com">
+
+  <!-- Required for Google Sign In / GoogleAPIs integration -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client"></script>
 </head>
+
 <body>
   <script src="flutter_bootstrap.js" async></script>
 </body>
+
 </html>

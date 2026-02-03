@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'models/models.dart';
 import 'services/session_service.dart';
+import 'services/google_calendar_service.dart';
 import 'widgets/glass_container.dart';
 import 'utils/design_tokens.dart';
 import 'pages/login_page.dart';
@@ -14,7 +15,9 @@ import 'widgets/sidebar_menu_item.dart';
 import 'widgets/configure_panels_dialog.dart';
 import 'services/panel_config_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GoogleCalendarService().initialize();
   runApp(const Ayla());
 }
 
@@ -90,11 +93,14 @@ class _MainScreenState extends State<MainScreen> {
   int _dashboardKey = 0;
   Map<String, dynamic>? _selectedWorkspace;
   List<PanelConfig> _panelConfig = [];
+  bool _isGoogleCalendarConnected = false;
+  final GoogleCalendarService _googleCalendarService = GoogleCalendarService();
 
   @override
   void initState() {
     super.initState();
     _loadPanelConfig();
+    _isGoogleCalendarConnected = _googleCalendarService.isConnected;
   }
 
   Future<void> _loadPanelConfig() async {
@@ -333,6 +339,64 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Google Calendar Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.surface(isDark),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: DesignTokens.border(isDark)),
+                      ),
+                      child: Row(
+                        children: [
+                          // Google Calendar Icon from asset
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.asset(
+                              'assets/images/google_calendar_icon.png',
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              'Google Calendar',
+                              style: GoogleFonts.inter(
+                                color: DesignTokens.textSec(isDark),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                          // Toggle Switch
+                          Transform.scale(
+                            scale: 0.8,
+                            child: Switch(
+                              value: _isGoogleCalendarConnected,
+                              onChanged: (value) async {
+                                final success = await _googleCalendarService.toggleConnection();
+                                if (success) {
+                                  setState(() {
+                                    _isGoogleCalendarConnected = _googleCalendarService.isConnected;
+                                  });
+                                }
+                              },
+                              activeColor: Colors.white,
+                              activeTrackColor: const Color(0xFF4285F4),
+                              inactiveThumbColor: Colors.white,
+                              inactiveTrackColor: DesignTokens.textTert(isDark).withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

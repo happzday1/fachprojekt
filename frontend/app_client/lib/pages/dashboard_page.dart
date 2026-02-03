@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../models/models.dart';
 import '../services/ayla_service.dart';
+import '../services/google_calendar_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/email/email_list_widget.dart';
 import '../services/workspace_service.dart';
@@ -36,6 +37,10 @@ class _DashboardPageState extends State<DashboardPage> {
   String? _username;
   String? _password;
   List<Map<String, dynamic>> _workspaces = [];
+  
+  // Google Calendar integration
+  final GoogleCalendarService _googleCalendarService = GoogleCalendarService();
+  List<GoogleCalendarEvent> _googleCalendarEvents = [];
 
   @override
   void initState() {
@@ -43,6 +48,25 @@ class _DashboardPageState extends State<DashboardPage> {
     _session = widget.session;
     _loadCredentials();
     _fetchSavedEvents();
+    _initGoogleCalendar();
+  }
+
+  void _initGoogleCalendar() {
+    // Listen for changes to Google Calendar events
+    _googleCalendarService.eventsNotifier.addListener(_onGoogleCalendarEventsChanged);
+    // Load initial events if connected
+    if (_googleCalendarService.isConnected) {
+      _googleCalendarEvents = _googleCalendarService.events;
+      _googleCalendarService.refreshEvents();
+    }
+  }
+
+  void _onGoogleCalendarEventsChanged() {
+    if (mounted) {
+      setState(() {
+        _googleCalendarEvents = _googleCalendarService.events;
+      });
+    }
   }
 
   Future<void> _loadCredentials() async {
@@ -130,6 +154,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _googleCalendarService.eventsNotifier.removeListener(_onGoogleCalendarEventsChanged);
     super.dispose();
   }
 
@@ -330,6 +355,7 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               _MonthlyCalendar(
                 deadlines: deadlines,
+                googleEvents: _googleCalendarEvents,
                 onDateSelected: (date, events) {
                   setState(() {
                     _selectedCalendarDate = date;
@@ -660,7 +686,13 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildEventItem(CalendarEvent event, bool isDark) {
-    final eventColor = Colors.primaries[event.title.hashCode % Colors.primaries.length];
+    Color eventColor;
+    if (event.platform == 'Google') {
+      eventColor = const Color(0xFF4285F4); // Google Blue
+    } else {
+      eventColor = DesignTokens.braunOrange; // Default
+    }
+    
     return InkWell(
       onTap: () => _showEventDetails(event),
       borderRadius: BorderRadius.circular(12),
@@ -702,6 +734,36 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _showEventDetails(CalendarEvent event) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Get appropriate icon and color based on platform
+    IconData eventIcon;
+    Color eventColor;
+    
+    switch (event.platform) {
+      case 'Google':
+        eventIcon = Icons.event_rounded;
+        eventColor = const Color(0xFF4285F4); // Google Blue
+        break;
+      case 'Ayla':
+        eventIcon = Icons.assignment_rounded;
+        eventColor = DesignTokens.softRed;
+        break;
+      default: // Moodle
+        eventIcon = Icons.calendar_today_rounded;
+        eventColor = DesignTokens.braunOrange;
+    }
+    
+    // Format date/time appropriately
+    String dateTimeStr;
+    if (event.isAllDay) {
+      dateTimeStr = DateFormat('EEEE, d MMMM yyyy').format(event.date) + ' (All day)';
+    } else {
+      dateTimeStr = DateFormat('EEEE, d MMMM yyyy, HH:mm').format(event.date);
+      if (event.endDate != null) {
+        dateTimeStr += ' - ${DateFormat('HH:mm').format(event.endDate!)}';
+      }
+    }
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -712,12 +774,12 @@ class _DashboardPageState extends State<DashboardPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (event.platform == 'Ayla' ? DesignTokens.softRed : DesignTokens.braunOrange).withValues(alpha: 0.12),
+                color: eventColor.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                event.platform == 'Ayla' ? Icons.assignment_rounded : Icons.calendar_today_rounded,
-                color: event.platform == 'Ayla' ? DesignTokens.softRed : DesignTokens.braunOrange,
+                eventIcon,
+                color: eventColor,
                 size: 20,
               ),
             ),
@@ -734,13 +796,27 @@ class _DashboardPageState extends State<DashboardPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow(Icons.book_outlined, "Course", event.course ?? "General", isDark),
-            const SizedBox(height: 16),
-            _buildDetailRow(Icons.access_time_rounded, "Due Date", DateFormat('EEEE, d MMMM yyyy, HH:mm').format(event.date), isDark),
-            if (event.link != null && event.link!.isNotEmpty) ...[
+            if (event.course != null && event.course!.isNotEmpty) ...[
+              _buildDetailRow(
+                event.platform == 'Google' ? Icons.location_on_outlined : Icons.book_outlined, 
+                event.platform == 'Google' ? "Location" : "Course", 
+                event.course!, 
+                isDark
+              ),
               const SizedBox(height: 16),
-              _buildDetailRow(Icons.link_rounded, "Platform", event.platform, isDark),
             ],
+            _buildDetailRow(
+              Icons.access_time_rounded, 
+              event.platform == 'Google' ? "Time" : "Due Date", 
+              dateTimeStr, 
+              isDark
+            ),
+            if (event.description.isNotEmpty && event.platform == 'Google') ...[
+              const SizedBox(height: 16),
+              _buildDetailRow(Icons.notes_rounded, "Description", event.description, isDark),
+            ],
+            const SizedBox(height: 16),
+            _buildDetailRow(Icons.apps_rounded, "Source", event.platform, isDark),
           ],
         ),
         actions: [
@@ -764,7 +840,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: DesignTokens.braunOrange,
+                backgroundColor: eventColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -895,8 +971,13 @@ class _UpcomingListCompact extends StatelessWidget {
 
 class _MonthlyCalendar extends StatefulWidget {
   final List<Deadline> deadlines;
+  final List<GoogleCalendarEvent> googleEvents;
   final Function(DateTime, List<CalendarEvent>)? onDateSelected;
-  const _MonthlyCalendar({required this.deadlines, this.onDateSelected});
+  const _MonthlyCalendar({
+    required this.deadlines, 
+    this.googleEvents = const [],
+    this.onDateSelected,
+  });
 
   @override
   State<_MonthlyCalendar> createState() => _MonthlyCalendarState();
@@ -916,6 +997,8 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final events = <DateTime, List<CalendarEvent>>{};
+    
+    // Add deadlines
     for (var deadline in widget.deadlines) {
       try {
         final date = DateTime.parse(deadline.date);
@@ -925,10 +1008,29 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
         debugPrint("Error parsing data: $e");
       }
     }
+    
+    // Add Google Calendar events
+    for (var googleEvent in widget.googleEvents) {
+      try {
+        final dayOnly = DateTime(googleEvent.startTime.year, googleEvent.startTime.month, googleEvent.startTime.day);
+        events.putIfAbsent(dayOnly, () => []).add(CalendarEvent.fromGoogleCalendar(
+          id: googleEvent.id,
+          title: googleEvent.title,
+          description: googleEvent.description,
+          startTime: googleEvent.startTime,
+          endTime: googleEvent.endTime,
+          isAllDay: googleEvent.isAllDay,
+          location: googleEvent.location,
+          colorHex: googleEvent.colorHex,
+        ));
+      } catch (e) {
+        debugPrint("Error adding Google event: $e");
+      }
+    }
 
     return TableCalendar<CalendarEvent>(
-      firstDay: DateTime.utc(2020, 1, 1),
-      lastDay: DateTime.utc(2030, 12, 31),
+      firstDay: DateTime(2020, 1, 1),
+      lastDay: DateTime(2030, 12, 31),
       focusedDay: _focusedDay,
       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
       onDaySelected: (selectedDate, focusedDay) {
@@ -937,6 +1039,34 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
       },
       onPageChanged: (focusedDay) => _focusedDay = focusedDay,
       eventLoader: (day) => events[DateTime(day.year, day.month, day.day)] ?? [],
+        calendarBuilders: CalendarBuilders(
+        markerBuilder: (context, day, events) {
+          if (events.isEmpty) return null;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: events.take(4).map((event) {
+              Color dotColor;
+              if (event.platform == 'Google') {
+                dotColor = const Color(0xFF4285F4); // Google Blue
+              } else if (event.platform == 'Ayla') {
+                dotColor = DesignTokens.softRed;
+              } else {
+                dotColor = DesignTokens.braunOrange;
+              }
+              
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
       calendarStyle: CalendarStyle(
         outsideDaysVisible: false,
         weekendTextStyle: GoogleFonts.inter(color: DesignTokens.softRed.withValues(alpha: 0.7), fontSize: 13),
@@ -945,8 +1075,7 @@ class _MonthlyCalendarState extends State<_MonthlyCalendar> {
         todayTextStyle: GoogleFonts.inter(color: DesignTokens.textPrimary(isDark), fontWeight: FontWeight.bold),
         selectedDecoration: BoxDecoration(color: DesignTokens.braunOrange, shape: BoxShape.circle),
         selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        markerDecoration: BoxDecoration(color: DesignTokens.braunOrange, shape: BoxShape.circle),
-        markerSize: 4,
+        // markerDecoration: Removed to use custom builder
       ),
       headerStyle: HeaderStyle(
         formatButtonVisible: false, 

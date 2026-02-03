@@ -247,20 +247,24 @@ class CalendarEvent {
   final String title;
   final String description;
   final DateTime date;
+  final DateTime? endDate;
   final String? course;
   final String? link;
   final bool isCustom;
+  final bool isAllDay;
   final String color;
-  final String platform; // 'Moodle' or 'Ayla'
+  final String platform; // 'Moodle', 'Ayla', or 'Google'
 
   CalendarEvent({
     required this.id,
     required this.title,
     required this.description,
     required this.date,
+    this.endDate,
     this.course,
     this.link,
     required this.isCustom,
+    this.isAllDay = false,
     this.color = '#4a5568',
     this.platform = 'Moodle',
   });
@@ -289,6 +293,31 @@ class CalendarEvent {
       course: customEvent.location,
       isCustom: true,
       color: customEvent.color,
+    );
+  }
+
+  /// Factory constructor for Google Calendar events
+  factory CalendarEvent.fromGoogleCalendar({
+    required String id,
+    required String title,
+    String? description,
+    required DateTime startTime,
+    DateTime? endTime,
+    bool isAllDay = false,
+    String? location,
+    String colorHex = '#4285F4',
+  }) {
+    return CalendarEvent(
+      id: 'google_$id',
+      title: title,
+      description: description ?? '',
+      date: startTime,
+      endDate: endTime,
+      course: location,
+      isCustom: false,
+      isAllDay: isAllDay,
+      color: colorHex,
+      platform: 'Google',
     );
   }
 }
