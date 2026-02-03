@@ -12,13 +12,15 @@ import '../services/workspace_service.dart';
 import '../utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import '../services/panel_config_service.dart';
 
 class DashboardPage extends StatefulWidget {
   final SessionData session;
   final Function(int)? onNavigate;
   final Function(Map<String, dynamic>)? onWorkspaceSelected;
+  final List<PanelConfig> panelConfig;
 
-  const DashboardPage({super.key, required this.session, this.onNavigate, this.onWorkspaceSelected});
+  const DashboardPage({super.key, required this.session, this.onNavigate, this.onWorkspaceSelected, this.panelConfig = const []});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -194,130 +196,20 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Main Content Column
+                  // Main Content Column (Left)
                   Expanded(
                     flex: 3,
                     child: Column(
-                      children: [
-                        // Statistics Row (Grouped)
-                        _buildStatsRow(session, isDark),
-                        const SizedBox(height: 24),
-
-                        // AI Study Planner Row
-                        _buildStudyPlannerCard(session, isDark),
-                        const SizedBox(height: 24),
-                        
-                        // Deadlines & Classes Row
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: _buildSectionCard(
-                                  title: "Deadlines",
-                                  icon: Icons.timer_outlined,
-                                  color: DesignTokens.signalYellow,
-                                  child: _UpcomingListCompact(
-                                    deadlines: realDeadlines,
-                                    onTap: (d) => _showEventDetails(CalendarEvent.fromDeadline(d)),
-                                  ),
-                                  isDark: isDark,
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(
-                                child: _buildSectionCard(
-                                  title: "Classes",
-                                  icon: Icons.auto_stories_rounded,
-                                  color: DesignTokens.mutedBlue,
-                                  child: _CurrentClassesListCompact(classes: session.currentClasses),
-                                  isDark: isDark,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        // University Emails Section
-                        if (_username != null && _password != null)
-                          _buildSectionCard(
-                            title: "University Emails",
-                            icon: Icons.email_outlined,
-                            color: DesignTokens.mutedBlue,
-                            child: EmailListWidget(
-                              username: _username!,
-                              password: _password!,
-                              isDark: isDark,
-                            ),
-                            isDark: isDark,
-                          ),
-                      ],
+                      children: _buildLeftColumnPanels(session, realDeadlines, isDark),
                     ),
                   ),
                   const SizedBox(width: 24),
                   
-                  // Sidebar Content Column (Calendar & Passed)
+                  // Sidebar Content Column (Right)
                   Expanded(
                     flex: 2,
                     child: Column(
-                      children: [
-                        _buildSectionCard(
-                          title: "Calendar",
-                          icon: Icons.calendar_today_rounded,
-                          color: DesignTokens.braunOrange,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _MonthlyCalendar(
-                                deadlines: allDeadlines,
-                                onDateSelected: (date, events) {
-                                  setState(() {
-                                    _selectedCalendarDate = date;
-                                    _selectedDateEvents = events;
-                                  });
-                                },
-                              ),
-                              if (_selectedDateEvents != null && _selectedDateEvents!.isNotEmpty) ...[
-                                const SizedBox(height: 16),
-                                const Divider(height: 1, color: Colors.white12),
-                                const SizedBox(height: 16),
-                                Text(
-                                  DateFormat('EEEE, d MMMM').format(_selectedCalendarDate!),
-                                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
-                                ),
-                                const SizedBox(height: 12),
-                                ..._selectedDateEvents!.map((event) => _buildEventItem(event, isDark)),
-                              ],
-                            ],
-                          ),
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSectionCard(
-                          title: "Exams",
-                          icon: Icons.verified_rounded,
-                          color: DesignTokens.sageGreen,
-                          child: SizedBox(
-                            height: 120, // Slightly reduced to make room
-                            child: _PassedExamsList(examRequirements: session.examRequirements),
-                          ),
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 24),
-                        _buildSectionCard(
-                          title: "Workspaces",
-                          icon: Icons.layers_rounded,
-                          color: DesignTokens.braunOrange,
-                          child: SizedBox(
-                            height: 207, // Adjusted to align with Emails bottom
-                            child: _WorkspacesListCompact(
-                              workspaces: _workspaces,
-                              onTap: widget.onWorkspaceSelected,
-                            ),
-                          ),
-                          isDark: isDark,
-                        ),
-                      ],
+                      children: _buildRightColumnPanels(session, allDeadlines, isDark),
                     ),
                   ),
                 ],
@@ -327,6 +219,167 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
     );
+  }
+
+  bool _isPanelVisible(String panelId) {
+    if (widget.panelConfig.isEmpty) return true; // Show all if no config
+    final panel = widget.panelConfig.where((p) => p.id == panelId).firstOrNull;
+    return panel?.isVisible ?? true;
+  }
+
+  List<PanelConfig> _getLeftPanels() {
+    if (widget.panelConfig.isEmpty) {
+      return PanelConfigService.getDefaultPanels().where((p) => p.column == 'left').toList();
+    }
+    return widget.panelConfig.where((p) => p.column == 'left' && p.isVisible).toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  }
+
+  List<PanelConfig> _getRightPanels() {
+    if (widget.panelConfig.isEmpty) {
+      return PanelConfigService.getDefaultPanels().where((p) => p.column == 'right').toList();
+    }
+    return widget.panelConfig.where((p) => p.column == 'right' && p.isVisible).toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  }
+
+  List<Widget> _buildLeftColumnPanels(SessionData session, List<Deadline> realDeadlines, bool isDark) {
+    final panels = _getLeftPanels();
+    final List<Widget> widgets = [];
+    
+    for (int i = 0; i < panels.length; i++) {
+      final panel = panels[i];
+      final panelWidget = _buildPanelById(panel.id, session, realDeadlines, [], isDark);
+      if (panelWidget != null) {
+        if (widgets.isNotEmpty) {
+          widgets.add(const SizedBox(height: 24));
+        }
+        widgets.add(panelWidget);
+      }
+    }
+    
+    return widgets;
+  }
+
+  List<Widget> _buildRightColumnPanels(SessionData session, List<Deadline> allDeadlines, bool isDark) {
+    final panels = _getRightPanels();
+    final List<Widget> widgets = [];
+    
+    for (int i = 0; i < panels.length; i++) {
+      final panel = panels[i];
+      final panelWidget = _buildPanelById(panel.id, session, [], allDeadlines, isDark);
+      if (panelWidget != null) {
+        if (widgets.isNotEmpty) {
+          widgets.add(const SizedBox(height: 24));
+        }
+        widgets.add(panelWidget);
+      }
+    }
+    
+    return widgets;
+  }
+
+  Widget? _buildPanelById(String panelId, SessionData session, List<Deadline> realDeadlines, List<Deadline> allDeadlines, bool isDark) {
+    switch (panelId) {
+      case 'stats':
+        return _buildStatsRow(session, isDark);
+      case 'study_planner':
+        return _buildStudyPlannerCard(session, isDark);
+      case 'deadlines':
+        return _buildSectionCard(
+          title: "Deadlines",
+          icon: Icons.timer_outlined,
+          color: DesignTokens.signalYellow,
+          child: _UpcomingListCompact(
+            deadlines: realDeadlines.isNotEmpty ? realDeadlines : filterRealDeadlines(session.moodleDeadlines),
+            onTap: (d) => _showEventDetails(CalendarEvent.fromDeadline(d)),
+          ),
+          isDark: isDark,
+        );
+      case 'classes':
+        return _buildSectionCard(
+          title: "Classes",
+          icon: Icons.auto_stories_rounded,
+          color: DesignTokens.mutedBlue,
+          child: _CurrentClassesListCompact(classes: session.currentClasses),
+          isDark: isDark,
+        );
+      case 'emails':
+        if (_username != null && _password != null) {
+          return _buildSectionCard(
+            title: "University Emails",
+            icon: Icons.email_outlined,
+            color: DesignTokens.mutedBlue,
+            child: EmailListWidget(
+              username: _username!,
+              password: _password!,
+              isDark: isDark,
+            ),
+            isDark: isDark,
+          );
+        }
+        return null;
+      case 'calendar':
+        final deadlines = allDeadlines.isNotEmpty ? allDeadlines : [...filterRealDeadlines(session.moodleDeadlines), ..._savedEvents];
+        return _buildSectionCard(
+          title: "Calendar",
+          icon: Icons.calendar_today_rounded,
+          color: DesignTokens.braunOrange,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _MonthlyCalendar(
+                deadlines: deadlines,
+                onDateSelected: (date, events) {
+                  setState(() {
+                    _selectedCalendarDate = date;
+                    _selectedDateEvents = events;
+                  });
+                },
+              ),
+              if (_selectedDateEvents != null && _selectedDateEvents!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(height: 1, color: Colors.white12),
+                const SizedBox(height: 16),
+                Text(
+                  DateFormat('EEEE, d MMMM').format(_selectedCalendarDate!),
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black.withValues(alpha: 0.7)),
+                ),
+                const SizedBox(height: 12),
+                ..._selectedDateEvents!.map((event) => _buildEventItem(event, isDark)),
+              ],
+            ],
+          ),
+          isDark: isDark,
+        );
+      case 'exams':
+        return _buildSectionCard(
+          title: "Exams",
+          icon: Icons.verified_rounded,
+          color: DesignTokens.sageGreen,
+          child: SizedBox(
+            height: 120,
+            child: _PassedExamsList(examRequirements: session.examRequirements),
+          ),
+          isDark: isDark,
+        );
+      case 'workspaces':
+        return _buildSectionCard(
+          title: "Workspaces",
+          icon: Icons.layers_rounded,
+          color: DesignTokens.braunOrange,
+          child: SizedBox(
+            height: 207,
+            child: _WorkspacesListCompact(
+              workspaces: _workspaces,
+              onTap: widget.onWorkspaceSelected,
+            ),
+          ),
+          isDark: isDark,
+        );
+      default:
+        return null;
+    }
   }
 
   Widget _buildStatsRow(SessionData session, bool isDark) {

@@ -11,6 +11,8 @@ import 'pages/workspace_page.dart';
 
 import 'widgets/ayla_chat.dart';
 import 'widgets/sidebar_menu_item.dart';
+import 'widgets/configure_panels_dialog.dart';
+import 'services/panel_config_service.dart';
 
 void main() {
   runApp(const Ayla());
@@ -87,9 +89,39 @@ class _MainScreenState extends State<MainScreen> {
   bool _isChatOpen = false;
   int _dashboardKey = 0;
   Map<String, dynamic>? _selectedWorkspace;
+  List<PanelConfig> _panelConfig = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPanelConfig();
+  }
+
+  Future<void> _loadPanelConfig() async {
+    final config = await PanelConfigService.loadPanelConfig();
+    if (mounted) {
+      setState(() => _panelConfig = config);
+    }
+  }
 
   void _refreshDashboard() {
     setState(() => _dashboardKey++);
+  }
+
+  void _openConfigurePanels() {
+    showDialog(
+      context: context,
+      builder: (context) => ConfigurePanelsDialog(
+        panels: _panelConfig,
+        onSave: (updatedPanels) async {
+          await PanelConfigService.savePanelConfig(updatedPanels);
+          setState(() {
+            _panelConfig = updatedPanels;
+            _dashboardKey++; // Refresh dashboard
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -108,6 +140,7 @@ class _MainScreenState extends State<MainScreen> {
               _selectedIndex = 1;
             });
           },
+          panelConfig: _panelConfig,
         );
         break;
       case 1:
@@ -128,6 +161,7 @@ class _MainScreenState extends State<MainScreen> {
               _selectedIndex = 1;
             });
           },
+          panelConfig: _panelConfig,
         );
     }
 
@@ -208,6 +242,12 @@ class _MainScreenState extends State<MainScreen> {
                     })
                   ),
                   const SizedBox(height: 16),
+                  // Separator Line
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Divider(height: 1, thickness: 1, color: DesignTokens.border(isDark)),
+                  ),
+                  const SizedBox(height: 16),
                   // Theme Toggle
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -248,6 +288,42 @@ class _MainScreenState extends State<MainScreen> {
                             const SizedBox(width: 14),
                             Text(
                               isDark ? 'Light Mode' : 'Dark Mode',
+                              style: GoogleFonts.inter(
+                                color: DesignTokens.textSec(isDark),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Configure Panels Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: InkWell(
+                      onTap: _openConfigurePanels,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: DesignTokens.surface(isDark),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DesignTokens.border(isDark)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.dashboard_customize_rounded,
+                              color: DesignTokens.textSec(isDark),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 14),
+                            Text(
+                              'Configure Panels',
                               style: GoogleFonts.inter(
                                 color: DesignTokens.textSec(isDark),
                                 fontSize: 14,
