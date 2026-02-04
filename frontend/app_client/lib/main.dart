@@ -113,7 +113,44 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _loadPanelConfig();
+    _initializeGoogleCalendar();
+  }
+  
+  Future<void> _initializeGoogleCalendar() async {
+    // Set user ID and initialize
+    final userId = widget.session.userId;
+    if (userId != null) {
+      _googleCalendarService.setUserId(userId);
+      await _googleCalendarService.initialize(userId: userId);
+    }
+    
+    // Check for OAuth redirect (google_connected=true in URL)
+    _handleOAuthRedirect();
+    
+    // Listen for connection changes
+    _googleCalendarService.isConnectedNotifier.addListener(_onGoogleCalendarChanged);
     _isGoogleCalendarConnected = _googleCalendarService.isConnected;
+    if (mounted) setState(() {});
+  }
+  
+  void _handleOAuthRedirect() {
+    // On web, check URL for google_connected parameter
+    final uri = Uri.base;
+    if (uri.queryParameters['google_connected'] == 'true') {
+      debugPrint('OAuth redirect detected - refreshing status');
+      _googleCalendarService.handleOAuthRedirect();
+      
+      // Remove the query parameter from URL to clean it up
+      // (Optional: Could use html.window.history.replaceState on web)
+    }
+  }
+  
+  void _onGoogleCalendarChanged() {
+    if (mounted) {
+      setState(() {
+        _isGoogleCalendarConnected = _googleCalendarService.isConnected;
+      });
+    }
   }
 
   Future<void> _loadPanelConfig() async {

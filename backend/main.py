@@ -38,7 +38,7 @@ from google.genai import errors as genai_errors
 
 # Workspace API router
 from app.routers.workspace_router import router as workspace_router, username_to_uuid
-from app.routers import stream_chat, webhooks, audio_chat, assistant_router
+from app.routers import stream_chat, webhooks, audio_chat, assistant_router, calendar_router
 from app.auth import supabase_auth
 from app.services.academic_service import AcademicService
 from app.services.gemini_engine import get_supabase
@@ -168,6 +168,7 @@ app.include_router(stream_chat.router)
 app.include_router(webhooks.router)
 app.include_router(audio_chat.router)
 app.include_router(assistant_router.router)
+app.include_router(calendar_router.router)
 
 
 # ============================================

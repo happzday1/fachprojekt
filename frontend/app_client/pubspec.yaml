@@ -52,6 +52,7 @@ dependencies:
   http_parser: ^4.1.2
   # Google Calendar Integration
   googleapis: ^13.2.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
