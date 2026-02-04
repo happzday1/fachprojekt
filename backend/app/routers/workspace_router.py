@@ -394,7 +394,7 @@ async def get_files(workspace_id: str):
     """Get files."""
     try:
         response = supabase.table("workspace_files") \
-            .select("id, file_name, created_at, upload_status") \
+            .select("id, file_name, created_at, gemini_file_state") \
             .eq("workspace_id", workspace_id) \
             .order("created_at", desc=True) \
             .execute()
@@ -430,7 +430,21 @@ async def upload_file(
         storage_path = f"{user_id}/{filename}"
         
         # Use storage client
-        supabase.storage.from_("workspace_files").upload(
+        # Use storage client
+        bucket_name = "workspace_files"
+        
+        # Ensure bucket exists
+        try:
+            buckets = supabase.storage.list_buckets()
+            bucket_exists = any(b.name == bucket_name for b in buckets)
+            if not bucket_exists:
+                logger.info(f"Bucket '{bucket_name}' not found. Creating it...")
+                supabase.storage.create_bucket(bucket_name, options={"public": False})
+        except Exception as e:
+             # Log but continue, in case list_buckets fails but upload might work (permissions)
+             logger.warning(f"Bucket check/create failed: {e}")
+
+        supabase.storage.from_(bucket_name).upload(
             file=file_content,
             path=storage_path,
             file_options={"upsert": "true", "content-type": file.content_type}
@@ -441,7 +455,7 @@ async def upload_file(
             "workspace_id": workspace_id,
             "file_name": filename,
             "storage_path": storage_path,
-            "upload_status": "pending" # Will be uploaded to Gemini on next chat
+            "gemini_file_state": "uploading" # Will be uploaded to Gemini on next chat
         }).execute()
         
         return {"success": True, "filename": filename}

@@ -46,7 +46,7 @@ class WorkspaceService:
         # we'll assume we can query by workspace_id directly.
         
         response = self.supabase.table("gemini_caches") \
-            .select("resource_name, expires_at") \
+            .select("cache_resource_name, expires_at") \
             .eq("workspace_id", workspace_id) \
             .execute()
 
@@ -59,10 +59,10 @@ class WorkspaceService:
             
             # Check if expired
             if expires_at > datetime.now(timezone.utc):
-                logger.info(f"Cache hit for workspace {workspace_id}: {cache_entry['resource_name']}")
+                logger.info(f"Cache hit for workspace {workspace_id}: {cache_entry['cache_resource_name']}")
                 # We still need the files info for fallback if something goes wrong later, 
                 # but for simplicity, we'll return empty list if cache hit.
-                return cache_entry["resource_name"], []
+                return cache_entry["cache_resource_name"], []
             else:
                 logger.info(f"Cache expired for workspace {workspace_id}. Re-creating...")
                 # Cleanup old cache entry ideally, but upsert will handle the DB record update. 
@@ -130,7 +130,7 @@ class WorkspaceService:
                  
                  # Update DB with new Resource Name
                  self.supabase.table("workspace_files") \
-                    .update({"gemini_file_uri": resource_name, "upload_status": "uploaded"}) \
+                    .update({"gemini_file_uri": resource_name, "gemini_file_state": "active"}) \
                     .eq("id", file_record["id"]) \
                     .execute()
 
@@ -194,7 +194,7 @@ For display equations use: $$\\int \\frac{4x}{x^4-1} dx = answer$$"""
             # Upsert into gemini_caches
             self.supabase.table("gemini_caches").upsert({
                 "workspace_id": workspace_id,
-                "resource_name": cache.name,
+                "cache_resource_name": cache.name,
                 "expires_at": cache.expire_time
             }).execute()
             

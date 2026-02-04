@@ -248,16 +248,37 @@ class _WorkspacePageState extends State<WorkspacePage> {
         final platformFile = result.files.single;
         List<int>? fileBytes = platformFile.bytes;
         if (!kIsWeb && fileBytes == null && platformFile.path != null) { fileBytes = IoHelper.readFileSync(platformFile.path!); }
+        
         if (fileBytes != null) {
-          final success = await WorkspaceService.uploadFile(_selectedWorkspace!['id'], fileBytes, platformFile.name, _studentId);
+          await _uploadFileWithFeedback(fileBytes, platformFile.name);
+        }
+      }
+    } catch (e) { 
+      debugPrint("File pick error: $e"); 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error selecting file: $e"), backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  Future<void> _uploadFileWithFeedback(List<int> bytes, String name) async {
+      try {
+          if (_selectedWorkspace == null) return;
+            
+          // Show loading snackbar
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Uploading file..."), duration: Duration(milliseconds: 1000)));
+          
+          final success = await WorkspaceService.uploadFile(_selectedWorkspace!['id'], bytes, name, _studentId);
           if (success) {
             final files = await WorkspaceService.getFiles(_selectedWorkspace!['id']);
             setState(() { _files = files; });
-            if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("File uploaded successfully!"))); }
+            if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("File uploaded successfully!"), backgroundColor: Colors.green)); }
+          } else {
+             if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upload failed. Check server logs."), backgroundColor: Colors.red)); }
           }
-        }
+      } catch (e) {
+         if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Upload error: $e"), backgroundColor: Colors.red)); }
       }
-    } catch (e) { debugPrint("File pick error: $e"); }
   }
 
   Future<void> _deleteFile(String fileId) async {
@@ -574,12 +595,34 @@ class _WorkspacePageState extends State<WorkspacePage> {
             ),
           ),
           const Spacer(),
-          IconButton(
-            tooltip: tooltip,
-            icon: Icon(actionIcon, size: 18, color: DesignTokens.textTert(isDark)),
-            onPressed: onAction,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          Tooltip(
+            message: tooltip ?? '',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onAction,
+                borderRadius: BorderRadius.circular(10),
+                hoverColor: DesignTokens.braunOrange.withValues(alpha: 0.15),
+                splashColor: DesignTokens.braunOrange.withValues(alpha: 0.25),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: DesignTokens.braunOrange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: DesignTokens.braunOrange.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    actionIcon, 
+                    size: 22, 
+                    color: DesignTokens.braunOrange,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
