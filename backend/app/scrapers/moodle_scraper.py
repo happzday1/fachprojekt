@@ -123,6 +123,17 @@ class MoodleScraper:
             # Wait for redirect (timeout indicates potential failure)
             time.sleep(3)  # Give SSO time to process
             
+            # Handle TOTP registration page if it appears
+            # This page asks about second factor registration - we click "Login without registration"
+            try:
+                skip_totp_btn = self.driver.find_element(By.CSS_SELECTOR, "input#idToken4_1[value='Login without registration'], input[value='Login without registration']")
+                if skip_totp_btn.is_displayed():
+                    skip_totp_btn.click()
+                    logger.info("Clicked 'Login without registration' to skip TOTP setup")
+                    time.sleep(2)  # Wait for redirect after clicking
+            except Exception as totp_e:
+                logger.debug(f"TOTP registration page not shown or already bypassed: {totp_e}")
+            
             # Check for common authentication failure indicators
             page_source_lower = self.driver.page_source.lower()
             current_url = self.driver.current_url.lower()
