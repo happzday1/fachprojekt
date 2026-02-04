@@ -52,12 +52,27 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _initGoogleCalendar() {
+    // Listen for changes to Google Calendar connection status
+    _googleCalendarService.isConnectedNotifier.addListener(_onGoogleCalendarConnectionChanged);
     // Listen for changes to Google Calendar events
     _googleCalendarService.eventsNotifier.addListener(_onGoogleCalendarEventsChanged);
     // Load initial events if connected
     if (_googleCalendarService.isConnected) {
       _googleCalendarEvents = _googleCalendarService.events;
       _googleCalendarService.refreshEvents();
+    }
+  }
+  
+  void _onGoogleCalendarConnectionChanged() {
+    if (mounted) {
+      // When connection status changes (e.g., user connects their calendar),
+      // refresh the events if now connected
+      if (_googleCalendarService.isConnected) {
+        _googleCalendarService.refreshEvents();
+      }
+      setState(() {
+        _googleCalendarEvents = _googleCalendarService.events;
+      });
     }
   }
 
@@ -154,6 +169,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _googleCalendarService.isConnectedNotifier.removeListener(_onGoogleCalendarConnectionChanged);
     _googleCalendarService.eventsNotifier.removeListener(_onGoogleCalendarEventsChanged);
     super.dispose();
   }

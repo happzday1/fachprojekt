@@ -116,19 +116,32 @@ class _MainScreenState extends State<MainScreen> {
     _initializeGoogleCalendar();
   }
   
+  @override
+  void dispose() {
+    _googleCalendarService.isConnectedNotifier.removeListener(_onGoogleCalendarChanged);
+    super.dispose();
+  }
+  
   Future<void> _initializeGoogleCalendar() async {
+    // Listen for connection changes BEFORE initializing
+    // This ensures we catch any status updates during initialization
+    _googleCalendarService.isConnectedNotifier.addListener(_onGoogleCalendarChanged);
+    
     // Set user ID and initialize
-    final userId = widget.session.userId;
-    if (userId != null) {
-      _googleCalendarService.setUserId(userId);
-      await _googleCalendarService.initialize(userId: userId);
-    }
+    // Use userId if available, otherwise fall back to username-based ID
+    final userId = widget.session.userId ?? 
+        widget.session.profileName.toLowerCase().replaceAll(' ', '_');
+    
+    debugPrint('Initializing Google Calendar with userId: $userId');
+    
+    _googleCalendarService.setUserId(userId);
+    await _googleCalendarService.initialize(userId: userId);
     
     // Check for OAuth redirect (google_connected=true in URL)
     _handleOAuthRedirect();
     
-    // Listen for connection changes
-    _googleCalendarService.isConnectedNotifier.addListener(_onGoogleCalendarChanged);
+    // Update local state to match the service state
+    debugPrint('Google Calendar connected: ${_googleCalendarService.isConnected}');
     _isGoogleCalendarConnected = _googleCalendarService.isConnected;
     if (mounted) setState(() {});
   }

@@ -106,17 +106,29 @@ class GoogleCalendarService {
   
   /// Check connection status with backend
   Future<void> checkStatus() async {
-    if (_currentUserId == null) return;
+    if (_currentUserId == null) {
+      debugPrint('Google Calendar checkStatus: No user ID set, skipping');
+      return;
+    }
+    
+    debugPrint('Google Calendar checkStatus: Checking for user $_currentUserId');
     
     try {
+      final url = '$_baseUrl/calendar/status?user_id=$_currentUserId';
+      debugPrint('Google Calendar checkStatus: Calling $url');
+      
       final response = await http.get(
-        Uri.parse('$_baseUrl/calendar/status?user_id=$_currentUserId'),
+        Uri.parse(url),
       );
+      
+      debugPrint('Google Calendar checkStatus: Response ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final connected = data['connected'] == true;
         final email = data['email'] as String?;
+        
+        debugPrint('Google Calendar checkStatus: connected=$connected, email=$email');
         
         isConnectedNotifier.value = connected;
         _connectedEmail = email;
@@ -132,6 +144,8 @@ class GoogleCalendarService {
         if (connected) {
           await refreshEvents();
         }
+      } else {
+        debugPrint('Google Calendar checkStatus: Failed with status ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('Error checking Google Calendar status: $e');
